@@ -374,8 +374,8 @@ export default function ChatFab() {
     const candidateText =
       (
         payload.candidates as
-          | Array<{ content?: { parts?: Array<{ text?: string }> } }>
-          | undefined
+        | Array<{ content?: { parts?: Array<{ text?: string }> } }>
+        | undefined
       )
         ?.flatMap((c) => c.content?.parts ?? [])
         .map((p) => p.text)
@@ -592,21 +592,19 @@ export default function ChatFab() {
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => setMode("chat")}
-                className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${
-                  mode === "chat"
+                className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${mode === "chat"
                     ? "bg-cyan-300/20 border-cyan-200/35 text-cyan-50"
                     : "bg-white/5 border-white/10 text-cyan-100/70"
-                }`}
+                  }`}
               >
                 Normal Chat
               </button>
               <button
                 onClick={() => setMode("voice")}
-                className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${
-                  mode === "voice"
+                className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${mode === "voice"
                     ? "bg-amber-300/20 border-amber-200/35 text-amber-50"
                     : "bg-white/5 border-white/10 text-cyan-100/70"
-                }`}
+                  }`}
               >
                 Voice Mode
               </button>
@@ -635,11 +633,10 @@ export default function ChatFab() {
               messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`rounded-xl px-3 py-2 text-sm ${
-                    message.role === "user"
+                  className={`rounded-xl px-3 py-2 text-sm ${message.role === "user"
                       ? "bg-cyan-400/18 border border-cyan-200/20 text-cyan-50 ml-8"
                       : "bg-white/8 border border-white/10 text-cyan-100 mr-8"
-                  }`}
+                    }`}
                 >
                   <p className="whitespace-pre-wrap leading-relaxed">
                     {message.content}
