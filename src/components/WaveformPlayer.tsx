@@ -185,8 +185,8 @@ export default function WaveformPlayer({
         const ws = WaveSurfer.create({
           container: containerRef.current,
           waveColor: "#CBD5E1", // slate-300 — neutral resting state
-          progressColor: "#6366F1", // indigo-500 — matches app primary
-          cursorColor: "#4F46E5", // indigo-600
+          progressColor: "#4A9CAE", // teal-500 — matches app primary
+          cursorColor: "#387B8A", // teal-600
           cursorWidth: 2,
           barWidth: 2,
           barGap: 1,

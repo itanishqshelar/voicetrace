@@ -164,11 +164,11 @@ export default function HomePage() {
           {/* Hero */}
           <div className="space-y-4 animate-fade-in-up">
             <h2 className="text-4xl sm:text-5xl font-extrabold text-text-primary leading-tight">
-              VoiceTrace
+              VoiceKhaata
             </h2>
             <p className="text-text-secondary text-lg sm:text-xl max-w-md mx-auto leading-relaxed">
               Speak your sales in{" "}
-              <span className="text-indigo-600 font-medium">Hindi</span>,{" "}
+              <span className="text-teal-600 font-medium">Hindi</span>,{" "}
               <span className="text-sky-600 font-medium">English</span>, or{" "}
               <span className="text-amber-600 font-medium">Hinglish</span>
             </p>
@@ -214,7 +214,7 @@ export default function HomePage() {
                     onClick={() =>
                       transcription && handleTranscription(transcription)
                     }
-                    className="flex items-center gap-1.5 mt-3 px-4 py-1.5 rounded-lg text-xs font-medium bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors cursor-pointer"
+                    className="flex items-center gap-1.5 mt-3 px-4 py-1.5 rounded-lg text-xs font-medium bg-teal-50 text-teal-600 hover:bg-teal-100 transition-colors cursor-pointer"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                     Retry

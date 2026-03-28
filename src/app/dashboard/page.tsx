@@ -162,7 +162,7 @@ export default function DashboardPage() {
                   <div className="absolute right-0 top-full mt-2 z-50 w-56 bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden animate-fade-in-up">
                     <button
                       onClick={() => { exportPDF(entries); setShowExportMenu(false); }}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-left"
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-teal-50 hover:text-teal-700 transition-colors text-left"
                     >
                       <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
                         <FileText className="w-4 h-4 text-red-500" />

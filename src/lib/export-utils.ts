@@ -72,7 +72,7 @@ export function exportPDF(entries: SaleEntry[]) {
   const pageWidth = doc.internal.pageSize.getWidth();
 
   // Header bar
-  doc.setFillColor(79, 70, 229); // indigo-600
+  doc.setFillColor(79, 70, 229); // teal-600
   doc.rect(0, 0, pageWidth, 36, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(20);

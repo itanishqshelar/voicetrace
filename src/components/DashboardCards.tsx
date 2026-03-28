@@ -42,7 +42,7 @@ interface DashboardCardsProps {
   onDeleteEntry: (id: string) => void;
 }
 
-const CHART_COLORS = ['#4F46E5', '#0EA5E9', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+const CHART_COLORS = ['#387B8A', '#0EA5E9', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
 const CATEGORY_ICONS: Record<string, typeof Truck> = {
   transport: Truck,
@@ -184,8 +184,8 @@ export default function DashboardCards({
 
         <div className="card card-hover p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
-              <Calendar className="w-5 h-5 text-indigo-600" />
+            <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center">
+              <Calendar className="w-5 h-5 text-teal-600" />
             </div>
             <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">
               Today
@@ -230,9 +230,9 @@ export default function DashboardCards({
                 onClick={onRefreshInsights}
                 disabled={isLoadingInsights || entries.length === 0}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
-                  bg-indigo-50 hover:bg-indigo-100
-                  text-indigo-600 hover:text-indigo-700
-                  border border-indigo-100 hover:border-indigo-200
+                  bg-teal-50 hover:bg-teal-100
+                  text-teal-600 hover:text-teal-700
+                  border border-teal-100 hover:border-teal-200
                   disabled:opacity-40 disabled:cursor-not-allowed
                   transition-all duration-200
                   active:scale-95 cursor-pointer"
@@ -257,7 +257,7 @@ export default function DashboardCards({
                     className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 animate-fade-in-up"
                     style={{ animationDelay: `${i * 0.1}s` }}
                   >
-                    <Lightbulb className="w-4 h-4 text-indigo-400 mt-0.5 shrink-0" />
+                    <Lightbulb className="w-4 h-4 text-teal-400 mt-0.5 shrink-0" />
                     <p className="text-text-secondary text-sm leading-relaxed">{insight}</p>
                   </div>
                 ))}
@@ -290,7 +290,7 @@ export default function DashboardCards({
               </div>
             ) : (
               <p className="text-text-muted text-sm">
-                Click <span className="font-semibold text-indigo-500">Refresh</span> to generate AI-powered insights from your sales data.
+                Click <span className="font-semibold text-teal-500">Refresh</span> to generate AI-powered insights from your sales data.
               </p>
             )}
           </div>
@@ -313,7 +313,7 @@ export default function DashboardCards({
                     contentStyle={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 13 }}
                     formatter={(value: any) => [`₹${value}`, 'Revenue']}
                   />
-                  <Bar dataKey="revenue" fill="#4F46E5" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="revenue" fill="#387B8A" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (

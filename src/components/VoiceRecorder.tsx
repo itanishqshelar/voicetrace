@@ -132,7 +132,7 @@ export default function VoiceRecorder({
               ? "bg-danger shadow-[0_0_40px_rgba(239,68,68,0.3)] scale-110"
               : isDisabled
                 ? "bg-surface-lighter opacity-50 cursor-not-allowed"
-                : "bg-primary shadow-[0_0_30px_rgba(79,70,229,0.25)] hover:shadow-[0_0_50px_rgba(79,70,229,0.35)] hover:scale-105"
+                : "bg-primary shadow-[0_0_30px_rgba(56,123,138,0.25)] hover:shadow-[0_0_50px_rgba(56,123,138,0.35)] hover:scale-105"
           }`}
           aria-label={isRecording ? "Stop recording" : "Start recording"}
         >

@@ -237,8 +237,8 @@ export default function CatalogPage() {
             </div>
           ) : items.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center py-24 text-center">
-              <div className="w-20 h-20 rounded-2xl bg-indigo-50 flex items-center justify-center mb-6">
-                <PackageSearch className="w-10 h-10 text-indigo-500" />
+              <div className="w-20 h-20 rounded-2xl bg-teal-50 flex items-center justify-center mb-6">
+                <PackageSearch className="w-10 h-10 text-teal-500" />
               </div>
               <h3 className="text-xl font-bold text-text-primary mb-2">Your Catalog is Empty</h3>
               <p className="text-text-muted max-w-sm mb-6">Add your products with their typical prices so VoiceTrace can analyze your voice notes accurately.</p>
@@ -268,7 +268,7 @@ export default function CatalogPage() {
                       </div>
                     </div>
                     <div className="flex gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => openEditModal(item)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                      <button onClick={() => openEditModal(item)} className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors">
                         <Edit className="w-4 h-4" />
                       </button>
                       <button onClick={() => handleDelete(item.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
@@ -299,7 +299,7 @@ export default function CatalogPage() {
                       ? 'bg-red-500 text-white animate-pulse shadow-red-500/30' 
                       : isExtracting
                         ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                        : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-100'
+                        : 'bg-teal-50 text-teal-600 hover:bg-teal-100 border border-teal-100'
                   }`}
                 >
                   {isExtracting ? (

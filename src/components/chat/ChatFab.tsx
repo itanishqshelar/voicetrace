@@ -804,7 +804,7 @@ export default function ChatFab() {
     <>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full border border-cyan-200/30 bg-linear-to-r from-cyan-500 to-indigo-500 shadow-[0_12px_28px_rgba(6,182,212,0.35)] text-white flex items-center justify-center hover:scale-105 transition-transform"
+        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full border border-cyan-200/30 bg-linear-to-r from-cyan-500 to-teal-500 shadow-[0_12px_28px_rgba(6,182,212,0.35)] text-white flex items-center justify-center hover:scale-105 transition-transform"
         aria-label="Open AI chat"
       >
         {open ? (
@@ -921,7 +921,7 @@ export default function ChatFab() {
               <button
                 onClick={handleSendText}
                 disabled={loading || !textInput.trim()}
-                className="h-11 w-11 rounded-lg bg-linear-to-r from-cyan-500 to-indigo-500 text-white flex items-center justify-center disabled:opacity-50"
+                className="h-11 w-11 rounded-lg bg-linear-to-r from-cyan-500 to-teal-500 text-white flex items-center justify-center disabled:opacity-50"
               >
                 <Send className="w-4 h-4" />
               </button>

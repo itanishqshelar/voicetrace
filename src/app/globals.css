@@ -1,11 +1,19 @@
 @import "tailwindcss";
 
 @theme inline {
+  /* Force Next.js rebuild to apply teal theme */
+  --color-teal-50: #f0fdf4;
+  --color-teal-100: #ccfbf1;
+  --color-teal-500: #4A9CAE;
+  --color-teal-600: #387B8A;
+  --color-teal-700: #275A65;
+  --color-teal-800: #1a424a;
+  --color-teal-900: #112d33;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-primary: #4F46E5;
-  --color-primary-light: #6366F1;
-  --color-primary-dark: #3730A3;
+  --color-primary: #387B8A;
+  --color-primary-light: #4A9CAE;
+  --color-primary-dark: #275A65;
   --color-accent: #0EA5E9;
   --color-accent-light: #38BDF8;
   --color-surface: #FFFFFF;
@@ -48,11 +56,11 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(79, 70, 229, 0.2);
+  background: rgba(56, 123, 138, 0.2);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(79, 70, 229, 0.35);
+  background: rgba(56, 123, 138, 0.35);
 }
 
 /* Pulse animation for mic */
@@ -118,7 +126,7 @@ body {
 }
 
 .animate-shimmer {
-  background: linear-gradient(90deg, transparent 0%, rgba(79, 70, 229, 0.05) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(56, 123, 138, 0.05) 50%, transparent 100%);
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
 }
@@ -185,3 +193,5 @@ body {
   background: none !important;
   box-shadow: none !important;
 }
+
+:root { --color-primary: #387B8A; --color-primary-light: #4A9CAE; --color-primary-dark: #275A65; }

@@ -231,13 +231,13 @@ function LogCard({
           <div className="flex items-center gap-3">
             <div
               className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                isFlagged ? "bg-amber-100" : "bg-indigo-100"
+                isFlagged ? "bg-amber-100" : "bg-teal-100"
               }`}
             >
               {isFlagged ? (
                 <Flag className="w-4 h-4 text-amber-600" />
               ) : (
-                <Mic className="w-4 h-4 text-indigo-600" />
+                <Mic className="w-4 h-4 text-teal-600" />
               )}
             </div>
             <div className="flex items-center gap-1.5 text-xs text-text-muted flex-wrap">

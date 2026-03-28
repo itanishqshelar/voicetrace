@@ -131,17 +131,19 @@ export default function Sidebar() {
 
         {/* Brand header */}
         <div
-          className={`flex items-center h-16 px-4 border-b border-border shrink-0 ${collapsed ? "justify-center" : "gap-3"}`}
+          className={`flex items-center h-16 px-4 border-b border-border shrink-0 ${collapsed ? "justify-center" : "gap-2"}`}
         >
-          <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shrink-0">
-            <Mic className="w-4 h-4 text-white" />
+          <div className="relative flex items-center justify-center h-14 w-20 shrink-0 -ml-2 mr-1">
+            <img
+              src="/voicekhatanewlogo.png"
+              alt="VoiceTrace Logo"
+              className="absolute inset-0 w-full h-full object-contain scale-[1.65] origin-center"
+            />
           </div>
           <span
-            className={`text-lg font-bold text-text-primary whitespace-nowrap overflow-hidden transition-all duration-300 ${
-              collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
-            }`}
+            className={`text-xl tracking-tight font-extrabold text-foreground whitespace-nowrap overflow-hidden transition-all duration-300 ${collapsed ? "w-0 opacity-0 bg-transparent" : "w-auto opacity-100"}`}
           >
-            VoiceTrace
+            VoiceKhaata
           </span>
 
           {/* Mobile close */}
@@ -176,10 +178,9 @@ export default function Sidebar() {
                 className={`
                   ${collapsed ? "w-11 h-8 text-[11px]" : "flex-1 py-1.5 text-xs"}
                   rounded-lg font-semibold transition-all duration-200
-                  ${
-                    activeLang === lang.code
-                      ? "bg-primary text-white shadow-sm"
-                      : "text-text-secondary hover:text-text-primary hover:bg-white/60"
+                  ${activeLang === lang.code
+                    ? "bg-primary text-white shadow-sm"
+                    : "text-text-secondary hover:text-text-primary hover:bg-white/60"
                   }
                 `}
                 title={
@@ -213,10 +214,9 @@ export default function Sidebar() {
                   group relative flex items-center rounded-xl transition-all duration-200
                   text-sm font-medium
                   ${collapsed ? "justify-center w-11 h-11 mx-auto gap-0 p-0" : "gap-3 px-3 py-2.5 w-full"}
-                  ${
-                    isActive
-                      ? "bg-primary/10 text-primary shadow-sm"
-                      : "text-text-secondary hover:bg-surface-light hover:text-text-primary"
+                  ${isActive
+                    ? "bg-primary/10 text-primary shadow-sm"
+                    : "text-text-secondary hover:bg-surface-light hover:text-text-primary"
                   }
                 `}
               >
@@ -232,11 +232,10 @@ export default function Sidebar() {
                 />
 
                 <span
-                  className={`whitespace-nowrap overflow-hidden transition-all duration-300 ${
-                    collapsed
-                      ? "w-0 opacity-0 hidden md:block md:w-0"
-                      : "w-auto opacity-100"
-                  }`}
+                  className={`whitespace-nowrap overflow-hidden transition-all duration-300 ${collapsed
+                    ? "w-0 opacity-0 hidden md:block md:w-0"
+                    : "w-auto opacity-100"
+                    }`}
                 >
                   {item.label}
                 </span>
