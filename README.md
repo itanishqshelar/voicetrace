@@ -8,13 +8,13 @@ The app translates voice into text, extracts structured sales data, and immediat
 
 ## 🚀 Features
 
-- **🗣️ Multilingual Voice Logging:** Record sales effortlessly using natural speech (Hindi, English, or Hinglish).
-- **⚡ AI-Powered Parsing:** Utilizes the Groq API (Whisper and LLMs) for blazing-fast transcription and intelligent extraction of items, quantities, and prices.
-- **📊 Real-time Dashboard:** Track total earnings, expenses, and analytics with beautiful interactive charts (powered by Recharts).
-- **📝 Item Catalog:** Manage a centralized catalog of your products/services and their prices for quick reference.
-- **🔊 Interactive Voice Logs:** Review past recordings with audio playback, synchronized waveform visualization (via WaveSurfer.js), and text highlighting.
-- **💾 Secure Cloud Storage:** Data and audio recordings are securely stored and synced using Supabase.
-- **📈 Export Capabilities:** Easily export sales data and reports to Excel (XLSX) or PDF formats.
+- ** Multilingual Voice Logging:** Record sales effortlessly using natural speech (Hindi, English, or Hinglish).
+- ** AI-Powered Parsing:** Utilizes the Groq API (Whisper and LLMs) for blazing-fast transcription and intelligent extraction of items, quantities, and prices.
+- ** Real-time Dashboard:** Track total earnings, expenses, and analytics with beautiful interactive charts (powered by Recharts).
+- ** Item Catalog:** Manage a centralized catalog of your products/services and their prices for quick reference.
+- ** Interactive Voice Logs:** Review past recordings with audio playback, synchronized waveform visualization (via WaveSurfer.js), and text highlighting.
+- **Secure Cloud Storage:** Data and audio recordings are securely stored and synced using Supabase.
+- ** Export Capabilities:** Easily export sales data and reports to Excel (XLSX) or PDF formats.
 
 ## 🛠️ Tech Stack
 
