@@ -3,6 +3,7 @@ import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import Navbar from "@/components/Navbar";
 import ChatFab from "@/components/chat/ChatFab";
+import Script from "next/script";
 
 export const metadata: Metadata = {
   title: "VoiceTrace — Voice to Business Intelligence",
@@ -35,7 +36,9 @@ export default function RootLayout({
           {children}
         </div>
         <ChatFab />
-        <script
+        <Script
+          id="google-translate-init"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               function googleTranslateElementInit() {
@@ -48,7 +51,10 @@ export default function RootLayout({
             `,
           }}
         />
-        <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async />
+        <Script 
+          src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" 
+          strategy="afterInteractive" 
+        />
       </body>
     </html>
   );

@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, FormEvent } from 'react';
+import { useEffect, useState, FormEvent, useRef } from 'react';
 import Link from 'next/link';
-import { PackageSearch, Plus, Edit, Trash2, ArrowLeft, Loader2 } from 'lucide-react';
+import { PackageSearch, Plus, Edit, Trash2, ArrowLeft, Loader2, Mic, Square } from 'lucide-react';
 
 interface CatalogItem {
   id: string;
@@ -19,6 +19,12 @@ export default function CatalogPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Voice State
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<BlobPart[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -67,6 +73,83 @@ export default function CatalogPage() {
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingItem(null);
+    if (isRecording) stopRecording();
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        stream.getTracks().forEach(track => track.stop());
+        await handleVoiceUpload(audioBlob);
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error('Error accessing microphone:', err);
+      alert('Could not access microphone. Please check permissions.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const handleVoiceUpload = async (audioBlob: Blob) => {
+    setIsExtracting(true);
+    try {
+      const formData = new FormData();
+      formData.append('audio', audioBlob);
+
+      const transcribeRes = await fetch('/api/transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!transcribeRes.ok) throw new Error('Transcription failed');
+      const { text } = await transcribeRes.json();
+
+      if (!text) throw new Error('No text transcribed');
+
+      const extractRes = await fetch('/api/catalog/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!extractRes.ok) throw new Error('Extraction failed');
+      const extractedItem = await extractRes.json();
+
+      setFormData(prev => ({
+        ...prev,
+        name: extractedItem.name || prev.name,
+        price_per_unit: extractedItem.price_per_unit !== undefined ? extractedItem.price_per_unit.toString() : prev.price_per_unit,
+        unit: extractedItem.unit || prev.unit,
+        category: extractedItem.category || prev.category,
+        aliases: extractedItem.aliases && extractedItem.aliases.length > 0 ? extractedItem.aliases.join(', ') : prev.aliases,
+      }));
+
+    } catch (err) {
+      console.error('Voice extraction error:', err);
+      alert('Failed to process voice input. Please try again.');
+    } finally {
+      setIsExtracting(false);
+    }
   };
 
   const handleSave = async (e: FormEvent) => {
@@ -205,8 +288,28 @@ export default function CatalogPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-              <h3 className="text-lg font-bold text-slate-800">
+              <h3 className="text-lg font-bold text-slate-800 flex flex-col sm:flex-row sm:items-center gap-3">
                 {editingItem ? 'Edit Item' : 'Add New Item'}
+                <button
+                  type="button"
+                  onClick={isRecording ? stopRecording : startRecording}
+                  disabled={isExtracting}
+                  className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all shadow-sm ${
+                    isRecording 
+                      ? 'bg-red-500 text-white animate-pulse shadow-red-500/30' 
+                      : isExtracting
+                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                        : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-100'
+                  }`}
+                >
+                  {isExtracting ? (
+                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Extracting...</>
+                  ) : isRecording ? (
+                    <><Square className="w-3.5 h-3.5 fill-current" /> Stop Setup</>
+                  ) : (
+                    <><Mic className="w-3.5 h-3.5" /> Speak to Auto-fill</>
+                  )}
+                </button>
               </h3>
               <button onClick={closeModal} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg">
                 <Trash2 className="w-4 h-4 opacity-0" /> {/* Spacer */}

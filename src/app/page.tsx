@@ -1,10 +1,16 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { AlertTriangle, RotateCcw } from "lucide-react";
 import VoiceRecorder from "@/components/VoiceRecorder";
 import TranscriptionResult from "@/components/TranscriptionResult";
 import { SaleItem } from "@/lib/supabase";
+import {
+  detectHighlights,
+  enrichHighlightsWithTime,
+} from "@/lib/highlight-detection";
+import { addVoiceLog, updateVoiceLog, generateLogId } from "@/lib/voice-logs";
+import { uploadVoiceRecording } from "@/lib/supabase-audio";
 
 interface AnalyzedData {
   items: SaleItem[];
@@ -23,42 +29,100 @@ export default function HomePage() {
   const [saved, setSaved] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
-  const handleTranscription = useCallback(async (text: string) => {
-    setTranscription(text);
-    setAnalyzedData(null);
-    setSaved(false);
-    setAnalysisError(null);
-    setIsAnalyzing(true);
+  // Ref so handleSave can always read the latest log ID without stale closure
+  const currentLogIdRef = useRef<string | null>(null);
 
-    try {
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+  const handleTranscription = useCallback(
+    async (
+      text: string,
+      audioBlob?: Blob,
+      words?: Array<{ word: string; start: number; end: number }>,
+    ) => {
+      setTranscription(text);
+      setAnalyzedData(null);
+      setSaved(false);
+      setAnalysisError(null);
+      setIsAnalyzing(true);
+
+      // ── Create a voice log entry as soon as we have the transcript ──
+      const logId = generateLogId();
+      currentLogIdRef.current = logId;
+      // Detect text-based highlights, then enrich with audio timestamps
+      // from Groq Whisper's word-level output so the waveform can render
+      // coloured regions at the exact audio positions.
+      const rawHighlights = detectHighlights(text);
+      const highlights =
+        words && words.length > 0
+          ? enrichHighlightsWithTime(rawHighlights, text, words)
+          : rawHighlights;
+      addVoiceLog({
+        id: logId,
+        timestamp: new Date().toISOString(),
+        transcript: text,
+        highlights,
+        analyzedData: null,
+        audioUrl: undefined,
+        saved: false,
+        hasAnomaly: false,
+        anomalyMessage: "",
       });
 
-      const data = await response.json();
-
-      if (!response.ok || data.error) {
-        throw new Error(data.error || "Analysis failed");
+      // Upload audio to Supabase Storage in the background.
+      // Once complete, patch the log with the public URL so it's
+      // available for playback in the Logs page.
+      if (audioBlob) {
+        uploadVoiceRecording(audioBlob, logId).then((url) => {
+          if (url) {
+            updateVoiceLog(logId, { audioUrl: url });
+          }
+        });
       }
 
-      if (!data.items || !Array.isArray(data.items)) {
-        throw new Error("Invalid response format from AI");
-      }
+      try {
+        const response = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
 
-      setAnalyzedData(data);
-    } catch (error) {
-      console.error("Analysis error:", error);
-      setAnalysisError(
-        error instanceof Error
-          ? error.message
-          : "Failed to analyze sales data. Please try again.",
-      );
-    } finally {
-      setIsAnalyzing(false);
-    }
-  }, []);
+        const data = await response.json();
+
+        if (!response.ok || data.error) {
+          throw new Error(data.error || "Analysis failed");
+        }
+
+        if (!data.items || !Array.isArray(data.items)) {
+          throw new Error("Invalid response format from AI");
+        }
+
+        setAnalyzedData(data);
+
+        // ── Update log with structured analysis + anomaly info ──
+        updateVoiceLog(logId, {
+          analyzedData: {
+            items: data.items,
+            total_earnings: data.total_earnings,
+            total_expenses: data.total_expenses,
+            date: data.date,
+            needs_clarification: data.needs_clarification,
+            clarification_message: data.clarification_message,
+          },
+          hasAnomaly: data.needs_clarification ?? false,
+          anomalyMessage: data.clarification_message ?? "",
+        });
+      } catch (error) {
+        console.error("Analysis error:", error);
+        setAnalysisError(
+          error instanceof Error
+            ? error.message
+            : "Failed to analyze sales data. Please try again.",
+        );
+      } finally {
+        setIsAnalyzing(false);
+      }
+    },
+    [],
+  );
 
   const handleSave = useCallback(async () => {
     if (!analyzedData) return;
@@ -80,6 +144,11 @@ export default function HomePage() {
       }
 
       setSaved(true);
+
+      // ── Mark the current session's log as saved ──
+      if (currentLogIdRef.current) {
+        updateVoiceLog(currentLogIdRef.current, { saved: true });
+      }
     } catch (error) {
       console.error("Save error:", error);
     } finally {

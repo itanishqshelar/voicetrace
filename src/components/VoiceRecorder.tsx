@@ -3,7 +3,11 @@
 import { useState, useRef, useCallback } from "react";
 
 interface VoiceRecorderProps {
-  onTranscriptionComplete: (text: string) => void;
+  onTranscriptionComplete: (
+    text: string,
+    audioBlob?: Blob,
+    words?: Array<{ word: string; start: number; end: number }>,
+  ) => void;
   isProcessing: boolean;
 }
 
@@ -68,6 +72,8 @@ export default function VoiceRecorder({
   }, []);
 
   const sendForTranscription = async (audioBlob: Blob) => {
+    // Keep a reference so we can pass it to the parent after transcription
+    const originalBlob = audioBlob;
     setIsTranscribing(true);
     setError(null);
 
@@ -86,7 +92,7 @@ export default function VoiceRecorder({
       }
 
       const data = await response.json();
-      onTranscriptionComplete(data.text);
+      onTranscriptionComplete(data.text, originalBlob, data.words ?? []);
     } catch (err) {
       console.error("Transcription error:", err);
       setError(
