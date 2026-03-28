@@ -14,9 +14,9 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VoiceTrace — Voice to Business Intelligence",
+  title: "VoiceKhaata — Voice to Business Intelligence",
   description:
-    "Speak your daily sales in Hindi, English, or Hinglish. VoiceTrace converts voice into structured data, stores it, and generates AI-powered insights for street vendors.",
+    "Speak your daily sales in Hindi, English, or Hinglish. VoiceKhaata converts voice into structured data, stores it, and generates AI-powered insights for street vendors.",
   keywords: [
     "voice",
     "sales",
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "VoiceTrace",
+    title: "VoiceKhaata",
   },
   icons: {
     icon: [

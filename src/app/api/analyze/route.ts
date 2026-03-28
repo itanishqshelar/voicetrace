@@ -24,7 +24,12 @@ export async function POST(request: NextRequest) {
 
     const groq = new Groq({ apiKey: groqApiKey });
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(new Date());
     const catalogBlock = await getCatalogPromptBlock();
 
     const prompt = `Convert the following voice input into structured JSON. Extract items, quantity, price per unit, and total. IMPORTANT: Classify each item as either a "sale" (money earned) or "expense" (money spent). The input may be in Hindi, English, or Hinglish.
@@ -45,6 +50,14 @@ Output ONLY valid JSON in this EXACT format (no markdown, no code blocks, no exp
   "needs_clarification": false,
   "clarification_message": ""
 }
+
+CRITICAL RULES FOR DATE DETECTION:
+1. Today's date is "${today}".
+2. If the user mentions "aaj", "today", or DOES NOT mention any date/time, use "${today}".
+3. If the user says "yesterday" or "kal" (referring to yesterday), calculate the date as ${new Date(new Date(today).getTime() - 86400000).toISOString().split('T')[0]}.
+4. If the user mentions a specific day (e.g., "27 tarikh", "27th"), use that date for the current month "${today.substring(0, 7)}".
+5. NEVER use a past date by default. Only use a past date if the user EXPLICITLY specifies one.
+6. "aaj" is Hindi for "today". It must ALWAYS map to "${today}".
 
 CRITICAL RULES FOR QUANTITY CALCULATION:
 1. ALWAYS look up the item in the ITEM PRICE CATALOG above to get its price_per_unit.

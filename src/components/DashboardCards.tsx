@@ -16,7 +16,11 @@ import {
   Zap,
   MoreHorizontal,
   Trash2,
+  Users,
+  Plus,
+  X,
 } from 'lucide-react';
+import { useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -67,6 +71,34 @@ export default function DashboardCards({
   onRefreshInsights,
   onDeleteEntry,
 }: DashboardCardsProps) {
+  const [udhaarList, setUdhaarList] = useState([
+    { id: '1', name: 'Ramesh K.', amount: 450, date: '2 days ago' },
+    { id: '2', name: 'Suresh Tea', amount: 120, date: 'Today' },
+    { id: '3', name: 'Amit (Taxi)', amount: 65, date: 'Yesterday' },
+  ]);
+  const [isAddingUdhaar, setIsAddingUdhaar] = useState(false);
+  const [newUdhaar, setNewUdhaar] = useState({ name: '', amount: '' });
+
+  const handleAddUdhaar = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUdhaar.name || !newUdhaar.amount) return;
+    
+    setUdhaarList([
+      { 
+        id: Math.random().toString(36).substr(2, 9),
+        name: newUdhaar.name, 
+        amount: parseFloat(newUdhaar.amount), 
+        date: 'Just now' 
+      },
+      ...udhaarList
+    ]);
+    setNewUdhaar({ name: '', amount: '' });
+    setIsAddingUdhaar(false);
+  };
+
+  const removeUdhaar = (id: string) => {
+    setUdhaarList(udhaarList.filter(item => item.id !== id));
+  };
   const today = new Date().toISOString().split('T')[0];
   const todayEntries = entries.filter((e) => e.date === today);
 
@@ -211,268 +243,278 @@ export default function DashboardCards({
         </div>
       </div>
 
-      {/* ── ROW 2: Content Grid ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* AI Insights */}
+      {/* ── ROW 2: Overview (Insights, Revenue & Udhaar) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
+        {/* AI Insights - Compact Column */}
         <div className="lg:col-span-1">
-          <div className="card p-6">
-            <div className="flex items-center justify-between mb-5">
+          <div className="card p-5 h-full flex flex-col">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
                   <Lightbulb className="w-4 h-4 text-violet-600" />
                 </div>
-                <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
+                <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider">
                   AI Insights
                 </h3>
               </div>
               <button
                 id="refresh-insights-btn"
                 onClick={onRefreshInsights}
-                disabled={isLoadingInsights || entries.length === 0}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
-                  bg-teal-50 hover:bg-teal-100
-                  text-teal-600 hover:text-teal-700
-                  border border-teal-100 hover:border-teal-200
-                  disabled:opacity-40 disabled:cursor-not-allowed
-                  transition-all duration-200
-                  active:scale-95 cursor-pointer"
+                disabled={isLoadingInsights}
+                className="p-1.5 rounded-lg text-teal-600 hover:bg-teal-50 border border-teal-100 transition-all active:scale-95"
                 title="Refresh AI Insights"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isLoadingInsights ? 'animate-spin' : ''}`} />
-                {isLoadingInsights ? 'Analyzing...' : 'Refresh'}
               </button>
             </div>
 
-            {isLoadingInsights ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-4 bg-surface-light rounded animate-pulse" style={{ width: `${80 - i * 15}%` }} />
-                ))}
-              </div>
-            ) : insights ? (
-              <div className="space-y-3">
-                {insights.insights.map((insight, i) => (
-                  <div
-                    key={i}
-                    className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 animate-fade-in-up"
-                    style={{ animationDelay: `${i * 0.1}s` }}
-                  >
-                    <Lightbulb className="w-4 h-4 text-teal-400 mt-0.5 shrink-0" />
-                    <p className="text-text-secondary text-sm leading-relaxed">{insight}</p>
-                  </div>
-                ))}
-                {(insights.suggestion || insights.top_item) && (
-                  <div className="grid grid-cols-2 gap-3 pt-2">
-                    {insights.suggestion && (
-                      <div className="flex flex-col items-center pt-5 pb-3 px-3 rounded-2xl bg-gradient-to-br from-sky-50 to-sky-100/50 border border-sky-100 animate-fade-in-up aspect-square text-center shadow-sm hover:shadow-md transition-all duration-300 group" style={{ animationDelay: '0.3s' }}>
-                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white shadow-sm flex items-center justify-center mb-2 shrink-0 group-hover:scale-110 transition-transform duration-300">
-                          <Target className="w-4 h-4 md:w-5 md:h-5 text-sky-500" />
-                        </div>
-                        <p className="text-[9px] md:text-[10px] font-bold text-sky-600 uppercase tracking-widest mb-2 shrink-0">Tomorrow&apos;s Tip</p>
-                        <div className="flex-1 w-full overflow-y-auto scrollbar-thin scrollbar-thumb-sky-200 hover:scrollbar-thumb-sky-300 px-1">
-                          <p className="text-[11px] md:text-xs text-sky-950 font-medium leading-relaxed pb-1">{insights.suggestion}</p>
-                        </div>
+            <div className="flex-1 space-y-3 overflow-y-auto max-h-[350px] scrollbar-hide">
+              {isLoadingInsights ? (
+                [1, 2, 3].map((i) => (
+                  <div key={i} className="h-12 bg-slate-50 rounded-xl animate-pulse" />
+                ))
+              ) : insights ? (
+                <>
+                  {insights.insights.map((insight, i) => (
+                    <div key={i} className="p-3 rounded-xl bg-slate-50 border border-slate-100/50">
+                      <p className="text-text-secondary text-sm leading-relaxed">{insight}</p>
+                    </div>
+                  ))}
+                  
+                  {insights.top_item && (
+                    <div className="flex items-center p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-amber-100/50 border border-amber-100">
+                      <Star className="w-4 h-4 text-amber-500 mr-3 shrink-0" />
+                      <div>
+                        <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-0.5">Top Seller</p>
+                        <p className="text-sm text-amber-950 font-bold leading-tight">{insights.top_item}</p>
                       </div>
-                    )}
-                    {insights.top_item && (
-                      <div className="flex flex-col items-center pt-5 pb-3 px-3 rounded-2xl bg-gradient-to-br from-amber-50 to-amber-100/50 border border-amber-100 animate-fade-in-up aspect-square text-center shadow-sm hover:shadow-md transition-all duration-300 group" style={{ animationDelay: '0.4s' }}>
-                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white shadow-sm flex items-center justify-center mb-2 shrink-0 group-hover:scale-110 transition-transform duration-300">
-                          <Star className="w-4 h-4 md:w-5 md:h-5 text-amber-500" />
-                        </div>
-                        <p className="text-[9px] md:text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-2 shrink-0">Top Seller</p>
-                        <div className="flex-1 w-full overflow-y-auto scrollbar-thin scrollbar-thumb-amber-200 hover:scrollbar-thumb-amber-300 px-1 flex flex-col justify-center">
-                          <p className="text-xs md:text-sm text-amber-950 font-bold leading-tight pb-1">{insights.top_item}</p>
-                        </div>
+                    </div>
+                  )}
+                  
+                  {insights.suggestion && (
+                    <div className="flex items-start p-4 rounded-2xl bg-gradient-to-br from-sky-50 to-sky-100/50 border border-sky-100">
+                      <Target className="w-4 h-4 text-sky-500 mr-3 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-[10px] font-bold text-sky-600 uppercase tracking-widest mb-1">Tomorrow&apos;s Tip</p>
+                        <p className="text-xs text-sky-950 font-medium leading-snug">{insights.suggestion}</p>
                       </div>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-text-muted text-[11px] text-center py-4">Hit refresh for insights</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Minimal Revenue Chart */}
+        <div className="lg:col-span-2">
+          <div className="card p-5 h-full flex flex-col">
+            <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-4 shrink-0">
+              Revenue Trend
+            </h3>
+            {revenueChartData.length > 0 ? (
+              <div className="flex-1 w-full min-h-[180px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={revenueChartData} barSize={34}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: '#94A3B8' }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${v}`} />
+                    <Tooltip
+                      contentStyle={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 10, fontSize: 11 }}
+                      formatter={(value: any) => [`₹${value}`, 'Revenue']}
+                    />
+                    <Bar dataKey="revenue" fill="#387B8A" radius={[4, 4, 0, 0]} opacity={0.8} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             ) : (
-              <p className="text-text-muted text-sm">
-                Click <span className="font-semibold text-teal-500">Refresh</span> to generate AI-powered insights from your sales data.
-              </p>
+              <p className="text-text-muted text-[11px] text-center py-8">Gathering data...</p>
             )}
           </div>
         </div>
 
-        {/* Charts and Recent Sales */}
-        <div className="lg:col-span-2 space-y-5">
-          {/* Revenue Bar Chart */}
-          <div className="card p-5">
-            <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">
-              Daily Revenue
-            </h3>
-            {revenueChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={revenueChartData} barSize={32}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
-                  <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 12, fill: '#94A3B8' }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${v}`} />
-                  <Tooltip
-                    contentStyle={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 13 }}
-                    formatter={(value: any) => [`₹${value}`, 'Revenue']}
-                  />
-                  <Bar dataKey="revenue" fill="#387B8A" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="text-text-muted text-sm text-center py-8">No revenue data yet</p>
-            )}
-          </div>
-
-          {/* Item Distribution and Recent Sales/Expenses */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {/* Item Distribution Pie */}
-            <div className="card p-5">
-              <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">
-                Item Distribution
+        {/* Udhaar Management Card */}
+        <div className="lg:col-span-1">
+          <div className="card p-5 h-full flex flex-col bg-rose-50/30 border-rose-100/50">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center">
+                <Users className="w-4 h-4 text-rose-600" />
+              </div>
+              <h3 className="text-xs font-bold text-rose-700 uppercase tracking-wider">
+                Udhaar (Credit)
               </h3>
-              {pieData.length > 0 ? (
-                <div className="space-y-4">
-                  <ResponsiveContainer width="100%" height={200}>
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={85}
-                        paddingAngle={2}
-                        dataKey="value"
-                      >
-                        {pieData.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 13 }}
-                        formatter={(value: any) => [value, 'Quantity']}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="space-y-2">
-                    {pieData.map((item, index) => {
-                      const total = pieData.reduce((sum, d) => sum + d.value, 0);
-                      const percentage = ((item.value / total) * 100).toFixed(1);
-                      return (
-                        <div key={item.name} className="flex items-center justify-between text-sm">
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-3 h-3 rounded-full"
-                              style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
-                            />
-                            <span className="text-text-secondary">{item.name}</span>
-                          </div>
-                          <span className="font-semibold text-text-primary">{percentage}%</span>
-                        </div>
-                      );
-                    })}
+            </div>
+            
+            <div className="flex-1 flex flex-col min-h-0">
+              {isAddingUdhaar ? (
+                <form onSubmit={handleAddUdhaar} className="space-y-3 p-3 rounded-2xl bg-white border border-rose-100 shadow-sm animate-fade-in-up">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[10px] font-bold text-rose-600 uppercase">New Entry</p>
+                    <button type="button" onClick={() => setIsAddingUdhaar(false)} className="text-slate-400 hover:text-slate-600">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                </div>
+                  <input
+                    autoFocus
+                    type="text"
+                    placeholder="Customer Name"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-300"
+                    value={newUdhaar.name}
+                    onChange={(e) => setNewUdhaar({ ...newUdhaar, name: e.target.value })}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Amount (₹)"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-300"
+                    value={newUdhaar.amount}
+                    onChange={(e) => setNewUdhaar({ ...newUdhaar, amount: e.target.value })}
+                  />
+                  <button type="submit" className="w-full py-2 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition-all shadow-sm shadow-rose-200">
+                    Save Record
+                  </button>
+                </form>
               ) : (
-                <p className="text-text-muted text-sm text-center py-8">No item data yet</p>
+                <div className="flex-1 space-y-3 overflow-y-auto max-h-[350px] scrollbar-hide pr-1">
+                  {udhaarList.map((person) => (
+                    <div key={person.id} className="flex items-center justify-between p-2.5 rounded-xl bg-white/60 border border-rose-100/50 hover:bg-white transition-all shadow-sm">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-800 truncate">{person.name}</p>
+                        <p className="text-[10px] text-slate-400">{person.date}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-black text-rose-600 shrink-0">₹{person.amount}</p>
+                        <button 
+                          onClick={() => removeUdhaar(person.id)}
+                          className="p-1 rounded-md text-rose-300 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <button 
+                    onClick={() => setIsAddingUdhaar(true)}
+                    className="w-full py-3 border-2 border-dashed border-rose-200 rounded-xl text-rose-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-300 transition-all text-[11px] font-bold flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add Udhaar
+                  </button>
+                </div>
               )}
             </div>
+          </div>
+        </div>
+      </div>
 
-            {/* Recent Sales & Expenses Container */}
-            <div className="flex flex-col gap-5">
-              {/* Recent Sales */}
-              <div className="card p-5 flex flex-col">
-                <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">
-                  Recent Sales
-                </h3>
-                {recentSaleEntries.length === 0 ? (
-                  <p className="text-text-muted text-sm text-center py-4">
-                    No sales recorded yet.
-                  </p>
-                ) : (
-                  <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1 pb-1 scrollbar-thin scrollbar-thumb-slate-200 hover:scrollbar-thumb-slate-300">
-                    {recentSaleEntries.map((entry, i) => (
-                      <div
-                        key={entry.id}
-                        className="flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors animate-fade-in-up"
-                        style={{ animationDelay: `${i * 0.05}s` }}
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-text-primary">
-                            {entry.items?.map((item) => item.name).join(', ')}
-                          </p>
-                          <p className="text-xs text-text-muted mt-0.5">{entry.date}</p>
-                        </div>
-                        <div className="flex items-center">
-                          <div className="text-right">
-                            <p className="text-base font-bold text-emerald-600">
-                              +₹{entry.items.reduce((s, i) => s + i.total, 0)}
-                            </p>
-                            <p className="text-xs text-text-muted">
-                              {entry.items?.length || 0} items
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => onDeleteEntry(entry.id)}
-                            className="p-1.5 ml-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-slate-200 transition-colors"
-                            title="Delete entry"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
+      {/* ── ROW 3: Details Grid ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Item Distribution Pie */}
+        <div className="card p-5 h-full flex flex-col">
+          <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">
+            Item Distribution
+          </h3>
+          {pieData.length > 0 ? (
+            <div className="space-y-4">
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={85} paddingAngle={2} dataKey="value">
+                    {pieData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                     ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Recent Expenses */}
-              <div className="card p-5 flex flex-col">
-                <h3 className="text-sm font-semibold text-red-500 uppercase tracking-wider mb-4">
-                  Recent Expenses
-                </h3>
-                {recentExpenseEntries.length === 0 ? (
-                  <p className="text-text-muted text-sm text-center py-4">
-                    No expenses recorded yet.
-                  </p>
-                ) : (
-                  <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1 pb-1 scrollbar-thin scrollbar-thumb-slate-200 hover:scrollbar-thumb-slate-300">
-                    {recentExpenseEntries.map((entry, i) => (
-                      <div
-                        key={`exp-${entry.id}`}
-                        className="flex items-center justify-between p-3 rounded-xl bg-red-50/50 hover:bg-red-50 transition-colors animate-fade-in-up"
-                        style={{ animationDelay: `${i * 0.05}s` }}
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-text-primary">
-                            {entry.items?.map((item) => item.name).join(', ')}
-                          </p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <p className="text-xs text-text-muted">{entry.date}</p>
-                            {entry.items?.[0]?.category && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-600">
-                                {CATEGORY_LABELS[entry.items[0].category] || entry.items[0].category}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center">
-                          <div className="text-right">
-                            <p className="text-base font-bold text-red-600">
-                              -₹{entry.items.reduce((s, i) => s + i.total, 0)}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => onDeleteEntry(entry.id)}
-                            className="p-1.5 ml-2 rounded-lg text-red-300 hover:text-red-600 hover:bg-red-100 transition-colors"
-                            title="Delete entry"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                  </Pie>
+                  <Tooltip contentStyle={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 13 }} formatter={(value: any) => [value, 'Quantity']} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-2">
+                {pieData.map((item, index) => {
+                  const total = pieData.reduce((sum, d) => sum + d.value, 0);
+                  const percentage = ((item.value / total) * 100).toFixed(1);
+                  return (
+                    <div key={item.name} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }} />
+                        <span className="text-text-secondary">{item.name}</span>
                       </div>
-                    ))}
-                  </div>
-                )}
+                      <span className="font-semibold text-text-primary">{percentage}%</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center py-8">
+              <p className="text-text-muted text-sm italic">No items sold yet</p>
+            </div>
+          )}
+        </div>
+
+        {/* Recent Sales */}
+        <div className="card p-5 h-full flex flex-col">
+          <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">
+            Recent Sales
+          </h3>
+          <div className="flex-1 space-y-2.5 overflow-y-auto max-h-[400px] pr-1">
+            {recentSaleEntries.length === 0 ? (
+              <p className="text-text-muted text-sm text-center py-4 italic">No recordings yet</p>
+            ) : (
+              recentSaleEntries.map((entry, i) => (
+                <div key={entry.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s` }}>
+                  <div>
+                    <p className="text-sm font-medium text-text-primary line-clamp-1">
+                      {entry.items?.map((item) => item.name).join(', ')}
+                    </p>
+                    <p className="text-xs text-text-muted mt-0.5">{entry.date}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-emerald-600">+₹{entry.items.reduce((s, i) => s + i.total, 0)}</p>
+                      <p className="text-[10px] text-text-muted">{entry.items?.length || 0} items</p>
+                    </div>
+                    <button onClick={() => onDeleteEntry(entry.id)} className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Recent Expenses */}
+        <div className="card p-5 h-full flex flex-col">
+          <h3 className="text-sm font-semibold text-red-500 uppercase tracking-wider mb-4">
+            Recent Expenses
+          </h3>
+          <div className="flex-1 space-y-2.5 overflow-y-auto max-h-[400px] pr-1">
+            {recentExpenseEntries.length === 0 ? (
+              <p className="text-text-muted text-sm text-center py-4 italic">No expenses yet</p>
+            ) : (
+              recentExpenseEntries.map((entry, i) => (
+                <div key={`exp-${entry.id}`} className="flex items-center justify-between p-3 rounded-xl bg-red-50/40 hover:bg-red-50 transition-colors animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s` }}>
+                  <div>
+                    <p className="text-sm font-medium text-text-primary line-clamp-1">
+                      {entry.items?.map((item) => item.name).join(', ')}
+                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-xs text-text-muted">{entry.date}</p>
+                      {entry.items?.[0]?.category && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-white text-red-500 border border-red-100 uppercase tracking-tighter">
+                          {entry.items[0].category}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <p className="text-sm font-bold text-red-600">-₹{entry.items.reduce((s, i) => s + i.total, 0)}</p>
+                    <button onClick={() => onDeleteEntry(entry.id)} className="p-1.5 rounded-lg text-red-200 hover:text-red-600 hover:bg-red-100 transition-all">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

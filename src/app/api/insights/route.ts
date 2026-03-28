@@ -46,7 +46,7 @@ Provide your response as ONLY valid JSON (no markdown, no code blocks) in this E
     "insight 2", 
     "insight 3"
   ],
-  "suggestion": "one actionable suggestion for tomorrow",
+  "suggestion": "one concise actionable suggestion for tomorrow (max 15 words)",
   "top_item": "name of the best selling item"
 }
 
@@ -55,7 +55,7 @@ Rules:
 - Focus on practical advice for a street vendor
 - If there are expenses, comment on spending patterns (e.g., transport costs)
 - Keep language simple and encouraging
-- The suggestion should be specific and actionable
+- The suggestion should be specific, actionable, and very short (under 15 words)
 - Identify the top-selling item by quantity or revenue (NOT expenses)`;
 
     const chatCompletion = await groq.chat.completions.create({
