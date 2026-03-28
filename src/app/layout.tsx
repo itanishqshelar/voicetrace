@@ -26,11 +26,27 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex">
+        {/* Hidden Google Translate widget */}
+        <div id="google_translate_element" style={{ display: 'none' }} />
         <Sidebar />
         <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
           <Navbar />
           {children}
         </div>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              function googleTranslateElementInit() {
+                new google.translate.TranslateElement({
+                  pageLanguage: 'en',
+                  includedLanguages: 'en,hi,mr',
+                  autoDisplay: false
+                }, 'google_translate_element');
+              }
+            `,
+          }}
+        />
+        <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async />
       </body>
     </html>
   );

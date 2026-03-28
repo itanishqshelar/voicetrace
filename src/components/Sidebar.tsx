@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Mic,
+  Languages,
 } from 'lucide-react';
 
 const navItems = [
@@ -22,6 +23,37 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [activeLang, setActiveLang] = useState('en');
+
+  const LANGS = [
+    { code: 'en', label: 'EN' },
+    { code: 'hi', label: 'हिं' },
+    { code: 'mr', label: 'मरा' },
+  ];
+
+  // Read initial lang from cookie on mount
+  useEffect(() => {
+    const match = document.cookie.match(/googtrans=\/en\/([a-z]+)/);
+    if (match) setActiveLang(match[1]);
+  }, []);
+
+  const switchLanguage = (langCode: string) => {
+    setActiveLang(langCode);
+
+    // Set googtrans cookie for Google Translate
+    document.cookie = `googtrans=/en/${langCode};path=/;`;
+    document.cookie = `googtrans=/en/${langCode};path=/;domain=${window.location.hostname};`;
+
+    // Try using the hidden Google Translate select element
+    const select = document.querySelector('.goog-te-combo') as HTMLSelectElement | null;
+    if (select) {
+      select.value = langCode;
+      select.dispatchEvent(new Event('change'));
+    } else {
+      // Fallback: reload to let Google Translate pick up the cookie
+      window.location.reload();
+    }
+  };
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -110,6 +142,37 @@ export default function Sidebar() {
             <ChevronLeft className="w-4 h-4 text-text-secondary" />
           </button>
         </div>
+
+        {/* Language Switcher */}
+        <div className={`px-3 pt-4 pb-2 ${collapsed ? 'flex flex-col items-center' : ''}`}>
+          {!collapsed && (
+            <div className="flex items-center gap-1.5 mb-2 px-1">
+              <Languages className="w-3.5 h-3.5 text-text-muted" />
+              <span className="text-[10px] font-semibold text-text-muted uppercase tracking-widest">Language</span>
+            </div>
+          )}
+          <div className={`flex ${collapsed ? 'flex-col gap-1' : 'gap-1'} ${collapsed ? '' : 'bg-slate-100 p-1 rounded-xl'}`}>
+            {LANGS.map((lang) => (
+              <button
+                key={lang.code}
+                onClick={() => switchLanguage(lang.code)}
+                className={`
+                  ${collapsed ? 'w-11 h-8 text-[11px]' : 'flex-1 py-1.5 text-xs'}
+                  rounded-lg font-semibold transition-all duration-200
+                  ${activeLang === lang.code
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-white/60'
+                  }
+                `}
+                title={lang.code === 'en' ? 'English' : lang.code === 'hi' ? 'Hindi' : 'Marathi'}
+              >
+                {lang.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mx-3 border-t border-border" />
 
         {/* Nav links */}
         <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
