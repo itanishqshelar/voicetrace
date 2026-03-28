@@ -1,4 +1,4 @@
-# VoiceTrace 🎙️
+# VoiceTrace 
 
 **VoiceTrace** is an AI-powered sales and expense tracking application built explicitly for street vendors, small business owners, and local shops. It allows users to log their daily transactions simply by speaking in **Hindi**, **English**, or **Hinglish**. 
 
@@ -6,7 +6,7 @@ The app translates voice into text, extracts structured sales data, and immediat
 
 ![VoiceTrace App](https://via.placeholder.com/800x400?text=VoiceTrace+App+Prev)
 
-## 🚀 Features
+##  Features
 
 - ** Multilingual Voice Logging:** Record sales effortlessly using natural speech (Hindi, English, or Hinglish).
 - ** AI-Powered Parsing:** Utilizes the Groq API (Whisper and LLMs) for blazing-fast transcription and intelligent extraction of items, quantities, and prices.
@@ -16,7 +16,7 @@ The app translates voice into text, extracts structured sales data, and immediat
 - **Secure Cloud Storage:** Data and audio recordings are securely stored and synced using Supabase.
 - ** Export Capabilities:** Easily export sales data and reports to Excel (XLSX) or PDF formats.
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 - **Framework:** [Next.js](https://nextjs.org/) (React 19)
 - **Styling:** [Tailwind CSS v4](https://tailwindcss.com/)
@@ -26,7 +26,7 @@ The app translates voice into text, extracts structured sales data, and immediat
 - **Charts:** [Recharts](https://recharts.org/)
 - **Icons:** [Lucide React](https://lucide.dev/)
 
-## 💻 Getting Started
+##  Getting Started
 
 ### Prerequisites
 
@@ -63,7 +63,7 @@ The app translates voice into text, extracts structured sales data, and immediat
 5. **Open the application:**
    Navigate to [http://localhost:3000](http://localhost:3000) in your browser to see the app running.
 
-## 📂 Project Structure
+##  Project Structure
 
 - `/src/app/` - Next.js App Router pages (Home, Dashboard, Catalog, Logs)
 - `/src/components/` - Reusable React components (VoiceRecorder, WaveformPlayer, Sidebar, UI components)
