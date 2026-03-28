@@ -115,10 +115,13 @@ export async function DELETE(request: NextRequest) {
       return Response.json({ success: true, dummy: true });
     }
 
-    const { error } = await supabase.from('sales').delete().eq('id', id);
+    const [salesDelete, expDelete] = await Promise.all([
+      supabase.from('sales').delete().eq('id', id),
+      supabase.from('expenses').delete().eq('id', id)
+    ]);
 
-    if (error) {
-      console.error('Supabase delete error:', error);
+    if (salesDelete.error || expDelete.error) {
+      console.error('Supabase delete error:', salesDelete.error, expDelete.error);
       return Response.json({ error: 'Failed to delete record' }, { status: 500 });
     }
 

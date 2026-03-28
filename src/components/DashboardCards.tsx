@@ -125,16 +125,14 @@ export default function DashboardCards({
       ...e,
       items: (e.items || []).filter((i) => i.type !== 'expense'),
     }))
-    .filter((e) => e.items.length > 0)
-    .slice(0, 20); // Keep reasonable limit but allow scrolling
+    .filter((e) => e.items.length > 0);
 
   const recentExpenseEntries = entries
     .map((e) => ({
       ...e,
       items: (e.items || []).filter((i) => i.type === 'expense'),
     }))
-    .filter((e) => e.items.length > 0)
-    .slice(0, 20); // Keep reasonable limit but allow scrolling
+    .filter((e) => e.items.length > 0);
 
   return (
     <div className="space-y-5">

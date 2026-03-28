@@ -10,7 +10,6 @@ function getSupabaseClient() {
 
 export async function GET() {
   try {
-    // 1. Fetch sales
     let entries;
     const supabase = getSupabaseClient();
 
@@ -21,21 +20,40 @@ export async function GET() {
         created_at: new Date().toISOString(),
       }));
     } else {
-      const { data, error } = await supabase
-        .from('sales')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(10);
+      const [salesRes, expensesRes] = await Promise.all([
+        supabase.from('sales').select('*').order('created_at', { ascending: false }),
+        supabase.from('expenses').select('*').order('created_at', { ascending: false })
+      ]);
 
-      if (error || !data || data.length === 0) {
+      const salesData = salesRes.data || [];
+      const expensesData = expensesRes.data || [];
+
+      const mappedExpenses = expensesData.map((e) => ({
+        id: e.id,
+        date: e.date,
+        total: e.amount,
+        created_at: e.created_at,
+        items: [{
+          name: e.description || e.category || 'Expense',
+          qty: 1,
+          price: e.amount,
+          total: e.amount,
+          type: 'expense',
+          category: e.category
+        }]
+      }));
+
+      const combinedData = [...salesData, ...mappedExpenses].sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      if ((!salesData || salesData.length === 0) && (!expensesData || expensesData.length === 0) && !salesRes.error) {
         // Seed dummy data if empty
-        if (!error && (!data || data.length === 0)) {
-          const insertPromises = dummySalesEntries.map((entry) =>
-            supabase.from('sales').insert(entry).select()
-          );
-          const results = await Promise.all(insertPromises);
-          entries = results.filter((r) => r.data).flatMap((r) => r.data!);
-        }
+        const insertPromises = dummySalesEntries.map((entry) =>
+          supabase.from('sales').insert(entry).select()
+        );
+        const results = await Promise.all(insertPromises);
+        entries = results.filter((r) => r.data).flatMap((r) => r.data!);
 
         if (!entries || entries.length === 0) {
           entries = dummySalesEntries.map((e, i) => ({
@@ -45,7 +63,7 @@ export async function GET() {
           }));
         }
       } else {
-        entries = data;
+        entries = combinedData;
       }
     }
 
