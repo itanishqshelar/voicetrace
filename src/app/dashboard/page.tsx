@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useCallback } from 'react';
-import DashboardCards from '@/components/DashboardCards';
-import { SaleEntry } from '@/lib/supabase';
-import { exportPDF, exportExcel } from '@/lib/export-utils';
-import { Download, FileText, FileSpreadsheet } from 'lucide-react';
+import { useEffect, useState, useCallback } from "react";
+import DashboardCards from "@/components/DashboardCards";
+import { SaleEntry } from "@/lib/supabase";
+import { exportPDF, exportExcel } from "@/lib/export-utils";
+import { Download, FileText, FileSpreadsheet } from "lucide-react";
 
 interface InsightsData {
   insights: string[];
@@ -12,8 +12,8 @@ interface InsightsData {
   top_item: string;
 }
 
-const SALES_CACHE_KEY = 'voicetrace_dashboard';
-const INSIGHTS_CACHE_KEY = 'voicetrace_insights';
+const SALES_CACHE_KEY = "voicetrace_dashboard";
+const INSIGHTS_CACHE_KEY = "voicetrace_insights";
 const SALES_CACHE_TTL = 60_000; // 1 minute for sales data
 
 // Sales data cache (short TTL — refreshes on each visit)
@@ -46,7 +46,9 @@ function getPersistedInsights(): InsightsData | null {
 function persistInsights(data: InsightsData) {
   try {
     localStorage.setItem(INSIGHTS_CACHE_KEY, JSON.stringify(data));
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 export default function DashboardPage() {
@@ -62,25 +64,29 @@ export default function DashboardPage() {
     if (cached) {
       setEntries(cached.entries || []);
       setIsLoading(false);
-    } else {
-      fetch('/api/dashboard')
-        .then((res) => res.json())
-        .then((data) => {
-          setEntries(data.entries || []);
-          try {
-            sessionStorage.setItem(
-              SALES_CACHE_KEY,
-              JSON.stringify({ entries: data.entries, timestamp: Date.now() })
-            );
-          } catch { /* ignore storage errors */ }
-        })
-        .catch((err) => {
-          console.error('Dashboard fetch error:', err);
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
     }
+
+    // Always revalidate in background so externally ingested logs
+    // (e.g., WhatsApp webhook) appear even when cached data exists.
+    fetch("/api/dashboard")
+      .then((res) => res.json())
+      .then((data) => {
+        setEntries(data.entries || []);
+        try {
+          sessionStorage.setItem(
+            SALES_CACHE_KEY,
+            JSON.stringify({ entries: data.entries, timestamp: Date.now() }),
+          );
+        } catch {
+          /* ignore storage errors */
+        }
+      })
+      .catch((err) => {
+        console.error("Dashboard fetch error:", err);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
 
     // Load persisted insights (these stay forever until Refresh is clicked)
     const saved = getPersistedInsights();
@@ -95,16 +101,16 @@ export default function DashboardPage() {
 
     setIsLoadingInsights(true);
     try {
-      const res = await fetch('/api/insights', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/insights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ entries: entries.slice(0, 5) }),
       });
       const data = await res.json();
       setInsights(data);
       persistInsights(data); // Save to localStorage — persists across sessions
     } catch (err) {
-      console.error('Insights fetch error:', err);
+      console.error("Insights fetch error:", err);
     } finally {
       setIsLoadingInsights(false);
     }
@@ -118,21 +124,23 @@ export default function DashboardPage() {
       try {
         sessionStorage.setItem(
           SALES_CACHE_KEY,
-          JSON.stringify({ entries: newEntries, timestamp: Date.now() })
+          JSON.stringify({ entries: newEntries, timestamp: Date.now() }),
         );
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       return newEntries;
     });
 
     try {
       const res = await fetch(`/api/sales?id=${id}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
       if (!res.ok) {
-        console.error('Failed to delete entry from database');
+        console.error("Failed to delete entry from database");
       }
     } catch (err) {
-      console.error('Delete entry error:', err);
+      console.error("Delete entry error:", err);
     }
   }, []);
 
@@ -141,7 +149,6 @@ export default function DashboardPage() {
       {/* Main Content */}
       <main className="flex-1 px-4 sm:px-8 py-6">
         <div className="max-w-7xl mx-auto">
-
           {/* Export Bar */}
           {!isLoading && entries.length > 0 && (
             <div className="flex justify-end mb-5 relative">
@@ -158,10 +165,16 @@ export default function DashboardPage() {
 
               {showExportMenu && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)} />
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowExportMenu(false)}
+                  />
                   <div className="absolute right-0 top-full mt-2 z-50 w-56 bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden animate-fade-in-up">
                     <button
-                      onClick={() => { exportPDF(entries); setShowExportMenu(false); }}
+                      onClick={() => {
+                        exportPDF(entries);
+                        setShowExportMenu(false);
+                      }}
                       className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-left"
                     >
                       <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
@@ -169,12 +182,17 @@ export default function DashboardPage() {
                       </div>
                       <div>
                         <p className="font-semibold">Export as PDF</p>
-                        <p className="text-xs text-slate-400">Formatted summary report</p>
+                        <p className="text-xs text-slate-400">
+                          Formatted summary report
+                        </p>
                       </div>
                     </button>
                     <div className="border-t border-slate-100" />
                     <button
-                      onClick={() => { exportExcel(entries); setShowExportMenu(false); }}
+                      onClick={() => {
+                        exportExcel(entries);
+                        setShowExportMenu(false);
+                      }}
                       className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors text-left"
                     >
                       <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
@@ -182,7 +200,9 @@ export default function DashboardPage() {
                       </div>
                       <div>
                         <p className="font-semibold">Export as Excel</p>
-                        <p className="text-xs text-slate-400">Multi-sheet workbook</p>
+                        <p className="text-xs text-slate-400">
+                          Multi-sheet workbook
+                        </p>
                       </div>
                     </button>
                   </div>

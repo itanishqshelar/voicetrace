@@ -53,6 +53,12 @@ The app translates voice into text, extracts structured sales data, and immediat
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
    GROQ_API_KEY=your_groq_api_key
+   WHAPI_TOKEN=your_whapi_token
+   ```
+
+   Optional (recommended if you set a secret in Whapi webhook settings):
+   ```env
+   WHAPI_WEBHOOK_SECRET=your_webhook_secret
    ```
 
 4. **Run the development server:**
