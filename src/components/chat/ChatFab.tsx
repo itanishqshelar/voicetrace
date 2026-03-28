@@ -922,30 +922,20 @@ ${summary}`,
             <div className="flex bg-slate-100/80 rounded-xl p-1 gap-1">
               <button
                 onClick={() => setMode("chat")}
-                className={`
-                  flex-1 flex items-center justify-center gap-1.5
-                  py-1.5 rounded-lg text-xs font-semibold
-                  transition-all duration-200
-                  ${mode === "chat"
-                    ? "bg-white text-indigo-600 shadow-sm shadow-slate-200 border border-slate-200/60"
-                    : "text-slate-500 hover:text-slate-700"
-                  }
-                `}
+                className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${mode === "chat"
+                  ? "bg-cyan-300/20 border-cyan-200/35 text-cyan-50"
+                  : "bg-white/5 border-white/10 text-cyan-100/70"
+                  }`}
               >
                 <MessageCircle className="w-3.5 h-3.5" />
                 Chat
               </button>
               <button
                 onClick={() => setMode("voice")}
-                className={`
-                  flex-1 flex items-center justify-center gap-1.5
-                  py-1.5 rounded-lg text-xs font-semibold
-                  transition-all duration-200
-                  ${mode === "voice"
-                    ? "bg-white text-amber-600 shadow-sm shadow-slate-200 border border-amber-100"
-                    : "text-slate-500 hover:text-slate-700"
-                  }
-                `}
+                className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${mode === "voice"
+                  ? "bg-amber-300/20 border-amber-200/35 text-amber-50"
+                  : "bg-white/5 border-white/10 text-cyan-100/70"
+                  }`}
               >
                 <Mic className="w-3.5 h-3.5" />
                 Voice
@@ -1018,23 +1008,17 @@ ${summary}`,
               messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex flex-col gap-1 ${message.role === "user" ? "items-end" : "items-start"
+                  className={`rounded-xl px-3 py-2 text-sm ${message.role === "user"
+                    ? "bg-cyan-400/18 border border-cyan-200/20 text-cyan-50 ml-8"
+                    : "bg-white/8 border border-white/10 text-cyan-100 mr-8"
                     }`}
                 >
-                  <div
-                    className={`
-                      max-w-[85%] px-3.5 py-2.5 text-sm leading-relaxed
-                      ${message.role === "user"
-                        ? "bg-linear-to-br from-primary to-primary-light text-white rounded-2xl rounded-br-sm shadow-sm shadow-indigo-500/20"
-                        : "bg-white border border-slate-200/80 text-slate-700 rounded-2xl rounded-bl-sm shadow-sm shadow-slate-100"
-                      }
-                    `}
-                  >
-                    <p className="whitespace-pre-wrap">{message.content}</p>
-                  </div>
-                  <span className="text-[10px] text-slate-400 px-1 uppercase tracking-wider font-medium">
+                  <p className="whitespace-pre-wrap leading-relaxed">
+                    {message.content}
+                  </p>
+                  <p className="mt-1 text-[10px] text-cyan-100/40 uppercase tracking-wide">
                     {message.mode}
-                  </span>
+                  </p>
                 </div>
               ))
             )}
