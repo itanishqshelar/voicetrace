@@ -1,0 +1,378 @@
+﻿diff --cc src/app/globals.css
+index 8dc0a02,3ab7993..0000000
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@@ -50,17 -42,17 +50,17 @@@ body 
+  
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+-   width: 6px;
++     width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+-   background: transparent;
++     background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+ -    background: rgba(79, 70, 229, 0.2);
+ -    border-radius: 3px;
+ +  background: rgba(56, 123, 138, 0.2);
+ +  border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+ -    background: rgba(79, 70, 229, 0.35);
+ +  background: rgba(56, 123, 138, 0.35);
+  }
+  
+  /* Pulse animation for mic */
+@@@ -184,14 -219,12 +222,14 @@@
+  .skiptranslate,
+  #goog-gt-tt,
+  .goog-te-balloon-frame {
+-   display: none !important;
++     display: none !important;
+  }
+  body {
+-   top: 0 !important;
++     top: 0 !important;
+  }
+  .goog-text-highlight {
+-   background: none !important;
+-   box-shadow: none !important;
++     background: none !important;
++     box-shadow: none !important;
+  }
+ +
+ +:root { --color-primary: #387B8A; --color-primary-light: #4A9CAE; --color-primary-dark: #275A65; }
+diff --cc src/components/chat/ChatFab.tsx
+index 0f85da2,0dfdfef..0000000
+--- a/src/components/chat/ChatFab.tsx
++++ b/src/components/chat/ChatFab.tsx
+@@@ -613,74 -700,35 +700,35 @@@ ${summary}`
+      return btoa(binary);
+    }
+  
+-   async function buildVoiceDbSummary() {
+-     const now = new Date();
+-     const from = new Date(now);
+-     from.setDate(now.getDate() - 30);
+-     const fromDate = from.toISOString().slice(0, 10);
+- 
+-     const salesPromise = supabase
+-       .from("sales")
+-       .select("date, total, items")
+-       .gte("date", fromDate)
+-       .order("date", { ascending: false })
+-       .limit(40);
+- 
+-     const expensesPromise = supabase
+-       .from("expenses")
+-       .select("date, amount, category")
+-       .gte("date", fromDate)
+-       .order("date", { ascending: false })
+-       .limit(40);
+- 
+-     const [salesRes, expensesRes] = await Promise.all([
+-       salesPromise,
+-       expensesPromise,
+-     ]);
+-     const sales = (salesRes.data ?? []) as SalesSummaryRow[];
+-     const expenses = (expensesRes.data ?? []) as ExpenseSummaryRow[];
+- 
+-     if (salesRes.error || expensesRes.error) {
+-       return "Could not fetch DB summary from Supabase.";
+-     }
+- 
+-     const totalSales = sales.reduce(
+-       (sum, s) => sum + (Number(s.total) || 0),
+-       0,
+-     );
+-     const totalExpenses = expenses.reduce(
+-       (sum, e) => sum + (Number(e.amount) || 0),
+-       0,
+-     );
+- 
+-     const topItemsMap: Record<string, number> = {};
+-     for (const sale of sales) {
+-       for (const item of sale.items ?? []) {
+-         if (item.type !== "sale") continue;
+-         const name = (item.name || "Unknown").trim();
+-         topItemsMap[name] =
+-           (topItemsMap[name] || 0) + (Number(item.total) || 0);
++   /**
++    * Fetches the full database context from the server-side API endpoint.
++    * Returns a human-readable text block covering ALL tables:
++    *   sales, expenses, item_catalog, voice_logs
++    * This replaces the old client-side limited summary.
++    */
++   async function buildVoiceDbSummary(): Promise<string> {
++     try {
++       const res = await fetch("/api/chat/db-context?format=voice");
++       if (!res.ok) {
++         console.warn("[buildVoiceDbSummary] API returned", res.status);
++         return "Database context unavailable ΓÇö API error.";
+        }
++       const json = (await res.json()) as VoiceDbResponse & { error?: string };
++       if (json.error || !json.contextString) {
++         return json.error ?? "Database context unavailable.";
++       }
++       console.log(
++         `[buildVoiceDbSummary] fetched context ΓÇö ` +
+ -          `sales=${json.meta?.sales_records ?? "?"}, ` +
+ -          `expenses=${json.meta?.expense_records ?? "?"}, ` +
+ -          `catalog=${json.meta?.catalog_items ?? "?"}, ` +
+ -          `voice_logs=${json.meta?.voice_log_count ?? "?"}`,
+++        `sales=${json.meta?.sales_records ?? "?"}, ` +
+++        `expenses=${json.meta?.expense_records ?? "?"}, ` +
+++        `catalog=${json.meta?.catalog_items ?? "?"}, ` +
+++        `voice_logs=${json.meta?.voice_log_count ?? "?"}`,
++       );
++       return json.contextString;
++     } catch (err) {
++       console.error("[buildVoiceDbSummary] fetch failed:", err);
++       return "Database context unavailable ΓÇö network error.";
+      }
+- 
+-     const topItems = Object.entries(topItemsMap)
+-       .sort((a, b) => b[1] - a[1])
+-       .slice(0, 3)
+-       .map(([name, amount]) => `${name}: Γé╣${amount}`)
+-       .join(", ");
+- 
+-     const latestSaleDate = sales[0]?.date ?? "n/a";
+-     const latestExpenseDate = expenses[0]?.date ?? "n/a";
+- 
+-     return [
+-       `Window: last 30 days`,
+-       `Total sales: Γé╣${totalSales}`,
+-       `Total expenses: Γé╣${totalExpenses}`,
+-       `Net: Γé╣${totalSales - totalExpenses}`,
+-       `Top sale items: ${topItems || "n/a"}`,
+-       `Latest sale date: ${latestSaleDate}`,
+-       `Latest expense date: ${latestExpenseDate}`,
+-     ].join("\n");
+    }
+  
+    async function startAudioStream() {
+@@@ -802,9 -850,18 +850,10 @@@
+  
+    return (
+      <>
++       {/* ΓöÇΓöÇ FAB Button ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
+        <button
+          onClick={() => setOpen((v) => !v)}
+-         className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full border border-cyan-200/30 bg-linear-to-r from-cyan-500 to-teal-500 shadow-[0_12px_28px_rgba(6,182,212,0.35)] text-white flex items-center justify-center hover:scale-105 transition-transform"
+ -        className={`
+ -          fixed bottom-6 right-6 z-50 h-14 w-14 rounded-2xl
+ -          bg-linear-to-br from-primary to-accent
+ -          shadow-lg shadow-indigo-500/30
+ -          text-white flex items-center justify-center
+ -          hover:scale-105 hover:shadow-xl hover:shadow-indigo-500/35
+ -          active:scale-95
+ -          transition-all duration-200
+ -        `}
+++        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full border border-cyan-200/30 bg-linear-to-r from-cyan-500 to-indigo-500 shadow-[0_12px_28px_rgba(6,182,212,0.35)] text-white flex items-center justify-center hover:scale-105 transition-transform"
+          aria-label="Open AI chat"
+        >
+          {open ? (
+@@@ -840,25 -924,41 +916,39 @@@
+              </button>
+            </div>
+  
+-           <div className="px-4 pt-3 pb-2 border-b border-cyan-100/10 space-y-2">
+-             <div className="grid grid-cols-2 gap-2">
++           {/* ΓöÇΓöÇ Mode Switcher + Session Picker ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
++           <div className="px-4 pt-3 pb-3 border-b border-slate-100 space-y-2.5 bg-slate-50/60">
++             {/* Mode pills */}
++             <div className="flex bg-slate-100/80 rounded-xl p-1 gap-1">
+                <button
+                  onClick={() => setMode("chat")}
+-                 className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${mode === "chat"
+-                     ? "bg-cyan-300/20 border-cyan-200/35 text-cyan-50"
+-                     : "bg-white/5 border-white/10 text-cyan-100/70"
+-                   }`}
++                 className={`
++                   flex-1 flex items-center justify-center gap-1.5
++                   py-1.5 rounded-lg text-xs font-semibold
++                   transition-all duration-200
+ -                  ${
+ -                    mode === "chat"
+ -                      ? "bg-white text-indigo-600 shadow-sm shadow-slate-200 border border-slate-200/60"
+ -                      : "text-slate-500 hover:text-slate-700"
+++                  ${mode === "chat"
+++                    ? "bg-white text-indigo-600 shadow-sm shadow-slate-200 border border-slate-200/60"
+++                    : "text-slate-500 hover:text-slate-700"
++                   }
++                 `}
+                >
+-                 Normal Chat
++                 <MessageCircle className="w-3.5 h-3.5" />
++                 Chat
+                </button>
+                <button
+                  onClick={() => setMode("voice")}
+-                 className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${mode === "voice"
+-                     ? "bg-amber-300/20 border-amber-200/35 text-amber-50"
+-                     : "bg-white/5 border-white/10 text-cyan-100/70"
+-                   }`}
++                 className={`
++                   flex-1 flex items-center justify-center gap-1.5
++                   py-1.5 rounded-lg text-xs font-semibold
++                   transition-all duration-200
+ -                  ${
+ -                    mode === "voice"
+ -                      ? "bg-white text-amber-600 shadow-sm shadow-slate-200 border border-amber-100"
+ -                      : "text-slate-500 hover:text-slate-700"
+++                  ${mode === "voice"
+++                    ? "bg-white text-amber-600 shadow-sm shadow-slate-200 border border-amber-100"
+++                    : "text-slate-500 hover:text-slate-700"
++                   }
++                 `}
+                >
+-                 Voice Mode
++                 <Mic className="w-3.5 h-3.5" />
++                 Voice
+                </button>
+              </div>
+  
+@@@ -889,17 -1028,25 +1018,23 @@@
+                messages.map((message) => (
+                  <div
+                    key={message.id}
+-                   className={`rounded-xl px-3 py-2 text-sm ${message.role === "user"
+-                       ? "bg-cyan-400/18 border border-cyan-200/20 text-cyan-50 ml-8"
+-                       : "bg-white/8 border border-white/10 text-cyan-100 mr-8"
+ -                  className={`flex flex-col gap-1 ${
+ -                    message.role === "user" ? "items-end" : "items-start"
+ -                  }`}
+++                  className={`flex flex-col gap-1 ${message.role === "user" ? "items-end" : "items-start"
+ +                    }`}
+                  >
+-                   <p className="whitespace-pre-wrap leading-relaxed">
+-                     {message.content}
+-                   </p>
+-                   <p className="mt-1 text-[10px] text-cyan-100/40 uppercase tracking-wide">
++                   <div
++                     className={`
++                       max-w-[85%] px-3.5 py-2.5 text-sm leading-relaxed
+ -                      ${
+ -                        message.role === "user"
+ -                          ? "bg-linear-to-br from-primary to-primary-light text-white rounded-2xl rounded-br-sm shadow-sm shadow-indigo-500/20"
+ -                          : "bg-white border border-slate-200/80 text-slate-700 rounded-2xl rounded-bl-sm shadow-sm shadow-slate-100"
+++                      ${message.role === "user"
+++                        ? "bg-linear-to-br from-primary to-primary-light text-white rounded-2xl rounded-br-sm shadow-sm shadow-indigo-500/20"
+++                        : "bg-white border border-slate-200/80 text-slate-700 rounded-2xl rounded-bl-sm shadow-sm shadow-slate-100"
++                       }
++                     `}
++                   >
++                     <p className="whitespace-pre-wrap">{message.content}</p>
++                   </div>
++                   <span className="text-[10px] text-slate-400 px-1 uppercase tracking-wider font-medium">
+                      {message.mode}
+-                   </p>
++                   </span>
+                  </div>
+                ))
+              )}
+@@@ -921,33 -1103,76 +1091,67 @@@
+                <button
+                  onClick={handleSendText}
+                  disabled={loading || !textInput.trim()}
+-                 className="h-11 w-11 rounded-lg bg-linear-to-r from-cyan-500 to-teal-500 text-white flex items-center justify-center disabled:opacity-50"
+ -                className="
+ -                  h-10.5 w-10.5 rounded-xl shrink-0
+ -                  bg-linear-to-br from-primary to-accent
+ -                  text-white flex items-center justify-center
+ -                  shadow-sm shadow-indigo-500/20
+ -                  hover:shadow-md hover:shadow-indigo-500/30 hover:scale-105
+ -                  disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100 disabled:shadow-none
+ -                  transition-all duration-150
+ -                "
+++                className="h-11 w-11 rounded-lg bg-linear-to-r from-cyan-500 to-indigo-500 text-white flex items-center justify-center disabled:opacity-50"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+-             <div className="p-3 border-t border-cyan-100/10 grid grid-cols-2 gap-2">
+-               <button
+-                 onClick={startListening}
+-                 disabled={isListening}
+-                 className="h-11 rounded-lg bg-linear-to-r from-amber-400 to-orange-400 text-slate-900 font-semibold text-sm disabled:opacity-50"
+-               >
+-                 {isListening
+-                   ? "Listening..."
+-                   : voiceConnected
+-                     ? "Start Voice"
+-                     : "Connect Voice"}
+-               </button>
+-               <button
+-                 onClick={stopListening}
+-                 className="h-11 rounded-lg border border-cyan-100/25 bg-white/6 text-cyan-50 font-semibold text-sm"
+-               >
+-                 <span className="inline-flex items-center gap-1.5">
+-                   <Mic className="w-4 h-4" />
++             /* ΓöÇΓöÇ Voice Controls ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
++             <div className="p-3 border-t border-slate-100 bg-white/70 space-y-2">
++               <div className="grid grid-cols-2 gap-2">
++                 {/* Start / Listening */}
++                 <button
++                   onClick={startListening}
++                   disabled={isListening}
++                   className={`
++                     h-11 rounded-xl text-sm font-semibold
++                     flex items-center justify-center gap-2
++                     transition-all duration-200
+ -                    ${
+ -                      isListening
+ -                        ? "bg-amber-50 border border-amber-200 text-amber-700 cursor-default"
+ -                        : "bg-linear-to-br from-amber-400 to-orange-500 text-white shadow-sm shadow-amber-500/25 hover:shadow-md hover:shadow-amber-500/30 hover:scale-[1.02]"
+++                    ${isListening
+++                      ? "bg-amber-50 border border-amber-200 text-amber-700 cursor-default"
+++                      : "bg-linear-to-br from-amber-400 to-orange-500 text-white shadow-sm shadow-amber-500/25 hover:shadow-md hover:shadow-amber-500/30 hover:scale-[1.02]"
++                     }
++                     disabled:opacity-80
++                   `}
++                 >
++                   {isListening ? (
++                     <>
++                       <span className="relative flex h-2 w-2">
++                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
++                         <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
++                       </span>
++                       ListeningΓÇª
++                     </>
++                   ) : (
++                     <>
++                       <Mic className="w-4 h-4" />
++                       {voiceConnected ? "Start Voice" : "Connect Voice"}
++                     </>
++                   )}
++                 </button>
++ 
++                 {/* Stop */}
++                 <button
++                   onClick={stopListening}
++                   className="
++                     h-11 rounded-xl text-sm font-semibold
++                     flex items-center justify-center gap-2
++                     border border-slate-200 bg-slate-50 text-slate-600
++                     hover:bg-slate-100 hover:border-slate-300 hover:text-slate-800
++                     transition-all duration-150
++                   "
++                 >
++                   <MicOff className="w-4 h-4" />
+                    Stop
+-                 </span>
+-               </button>
++                 </button>
++               </div>
++ 
++               {!voiceConnected && !status && (
++                 <p className="text-[11px] text-slate-400 text-center leading-relaxed">
++                   Connects to Gemini Live with full business context
++                 </p>
++               )}
+              </div>
+            )}
+          </div>
