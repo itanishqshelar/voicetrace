@@ -14,10 +14,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const whisperApiKey = process.env.WHISPER_API_KEY;
-    if (!whisperApiKey) {
+    const groqApiKey = process.env.GROQ_API_KEY;
+    if (!groqApiKey) {
       return Response.json(
-        { error: 'Whisper API key not configured' },
+        { error: 'Groq API key not configured' },
         { status: 500 }
       );
     }
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${whisperApiKey}`,
+          Authorization: `Bearer ${groqApiKey}`,
         },
         body: whisperFormData,
       }

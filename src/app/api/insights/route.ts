@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,16 +13,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-    if (!geminiApiKey) {
+    const groqApiKey = process.env.GROQ_API_KEY;
+    if (!groqApiKey) {
       return Response.json(
-        { error: 'Gemini API key not configured' },
+        { error: 'Groq API key not configured' },
         { status: 500 }
       );
     }
 
-    const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const groq = new Groq({ apiKey: groqApiKey });
 
     const salesSummary = entries.map((entry: { date: string; total: number; items: { name: string; qty: number; price: number; total: number; type?: string; category?: string }[] }) => ({
       date: entry.date,
@@ -59,8 +58,19 @@ Rules:
 - The suggestion should be specific and actionable
 - Identify the top-selling item by quantity or revenue (NOT expenses)`;
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text().trim();
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.5,
+      max_completion_tokens: 512,
+    });
+
+    const responseText = chatCompletion.choices[0]?.message?.content?.trim() || '';
 
     let cleanJson = responseText;
     if (cleanJson.startsWith('```json')) {
