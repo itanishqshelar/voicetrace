@@ -1,9 +1,13 @@
-'use client';
+"use client";
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback } from "react";
 
 interface VoiceRecorderProps {
-  onTranscriptionComplete: (text: string) => void;
+  onTranscriptionComplete: (
+    text: string,
+    audioBlob?: Blob,
+    words?: Array<{ word: string; start: number; end: number }>,
+  ) => void;
   isProcessing: boolean;
 }
 
@@ -29,9 +33,9 @@ export default function VoiceRecorder({
       });
 
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-          ? 'audio/webm;codecs=opus'
-          : 'audio/webm',
+        mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus"
+          : "audio/webm",
       });
 
       chunksRef.current = [];
@@ -44,7 +48,7 @@ export default function VoiceRecorder({
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const audioBlob = new Blob(chunksRef.current, { type: "audio/webm" });
         stream.getTracks().forEach((track) => track.stop());
         await sendForTranscription(audioBlob);
       };
@@ -52,44 +56,47 @@ export default function VoiceRecorder({
       mediaRecorder.start(100);
       setIsRecording(true);
     } catch (err) {
-      console.error('Error accessing microphone:', err);
-      setError(
-        'Could not access microphone. Please allow mic permissions.'
-      );
+      console.error("Error accessing microphone:", err);
+      setError("Could not access microphone. Please allow mic permissions.");
     }
   }, []);
 
   const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !== "inactive"
+    ) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
     }
   }, []);
 
   const sendForTranscription = async (audioBlob: Blob) => {
+    // Keep a reference so we can pass it to the parent after transcription
+    const originalBlob = audioBlob;
     setIsTranscribing(true);
     setError(null);
 
     try {
       const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.webm');
+      formData.append("audio", audioBlob, "recording.webm");
 
-      const response = await fetch('/api/transcribe', {
-        method: 'POST',
+      const response = await fetch("/api/transcribe", {
+        method: "POST",
         body: formData,
       });
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || 'Transcription failed');
+        throw new Error(errData.error || "Transcription failed");
       }
 
       const data = await response.json();
-      onTranscriptionComplete(data.text);
+      onTranscriptionComplete(data.text, originalBlob, data.words ?? []);
     } catch (err) {
-      console.error('Transcription error:', err);
+      console.error("Transcription error:", err);
       setError(
-        err instanceof Error ? err.message : 'Failed to transcribe audio'
+        err instanceof Error ? err.message : "Failed to transcribe audio",
       );
     } finally {
       setIsTranscribing(false);
@@ -108,11 +115,11 @@ export default function VoiceRecorder({
             <div className="absolute inset-0 rounded-full bg-primary/20 animate-pulse-ring" />
             <div
               className="absolute inset-0 rounded-full bg-primary/15 animate-pulse-ring"
-              style={{ animationDelay: '0.5s' }}
+              style={{ animationDelay: "0.5s" }}
             />
             <div
               className="absolute inset-0 rounded-full bg-primary/10 animate-pulse-ring"
-              style={{ animationDelay: '1s' }}
+              style={{ animationDelay: "1s" }}
             />
           </>
         )}
@@ -122,12 +129,12 @@ export default function VoiceRecorder({
           disabled={isDisabled}
           className={`relative z-10 w-28 h-28 sm:w-32 sm:h-32 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer ${
             isRecording
-              ? 'bg-danger shadow-[0_0_40px_rgba(239,68,68,0.3)] scale-110'
+              ? "bg-danger shadow-[0_0_40px_rgba(239,68,68,0.3)] scale-110"
               : isDisabled
-              ? 'bg-surface-lighter opacity-50 cursor-not-allowed'
-              : 'bg-primary shadow-[0_0_30px_rgba(79,70,229,0.25)] hover:shadow-[0_0_50px_rgba(79,70,229,0.35)] hover:scale-105'
+                ? "bg-surface-lighter opacity-50 cursor-not-allowed"
+                : "bg-primary shadow-[0_0_30px_rgba(79,70,229,0.25)] hover:shadow-[0_0_50px_rgba(79,70,229,0.35)] hover:scale-105"
           }`}
-          aria-label={isRecording ? 'Stop recording' : 'Start recording'}
+          aria-label={isRecording ? "Stop recording" : "Start recording"}
         >
           {isRecording ? (
             /* Stop icon */
@@ -185,7 +192,7 @@ export default function VoiceRecorder({
               className="w-1 bg-primary rounded-full waveform-bar"
               style={{
                 animationDelay: `${i * 0.1}s`,
-                height: '8px',
+                height: "8px",
               }}
             />
           ))}
@@ -207,9 +214,7 @@ export default function VoiceRecorder({
             Analyzing your sales...
           </p>
         ) : (
-          <p className="text-text-secondary text-lg">
-            Tap to speak your sales
-          </p>
+          <p className="text-text-secondary text-lg">Tap to speak your sales</p>
         )}
       </div>
 

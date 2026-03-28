@@ -1,23 +1,24 @@
-'use client';
+"use client";
 
-import { useState, FormEvent, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Save } from 'lucide-react';
-import Link from 'next/link';
-import { SaleItem, SaleEntry } from '@/lib/supabase';
-import { findCatalogItem } from '@/lib/item-catalog';
-import { useEffect } from 'react';
+import { useState, FormEvent, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, Save } from "lucide-react";
+import Link from "next/link";
+import { SaleItem, SaleEntry } from "@/lib/supabase";
+import { findCatalogItemSync } from "@/lib/item-catalog";
+import { useEffect } from "react";
 
 function AddEntryForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialType = (searchParams.get('type') as 'sale' | 'expense') || 'sale';
+  const initialType =
+    (searchParams.get("type") as "sale" | "expense") || "sale";
 
-  const [type, setType] = useState<'sale' | 'expense'>(initialType);
-  const [name, setName] = useState('');
+  const [type, setType] = useState<"sale" | "expense">(initialType);
+  const [name, setName] = useState("");
   const [qty, setQty] = useState(1);
-  const [price, setPrice] = useState('');
-  const [category, setCategory] = useState('other');
+  const [price, setPrice] = useState("");
+  const [category, setCategory] = useState("other");
   const [isSaving, setIsSaving] = useState(false);
   const [knownPrices, setKnownPrices] = useState<Record<string, number>>({});
 
@@ -39,7 +40,7 @@ function AddEntryForm() {
     };
 
     try {
-      const raw = sessionStorage.getItem('voicetrace_dashboard');
+      const raw = sessionStorage.getItem("voicetrace_dashboard");
       if (raw) {
         const cached = JSON.parse(raw);
         if (cached && cached.entries) {
@@ -50,12 +51,12 @@ function AddEntryForm() {
     } catch {}
 
     // Fallback if not in cache
-    fetch('/api/sales')
+    fetch("/api/sales")
       .then((res) => res.json())
       .then((data) => {
         if (data.entries) buildPriceMap(data.entries);
       })
-      .catch((err) => console.error('Error fetching prices map:', err));
+      .catch((err) => console.error("Error fetching prices map:", err));
   }, []);
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,7 +64,7 @@ function AddEntryForm() {
     setName(newName);
 
     // 1. Try catalog first (hardcoded source of truth)
-    const catalogMatch = findCatalogItem(newName);
+    const catalogMatch = findCatalogItemSync(newName);
     if (catalogMatch) {
       setPrice(catalogMatch.price_per_unit.toString());
       return;
@@ -90,32 +91,32 @@ function AddEntryForm() {
       price: numericPrice,
       total: itemTotal,
       type,
-      category: type === 'expense' ? category : undefined,
+      category: type === "expense" ? category : undefined,
     };
 
     try {
       // Clear dashboard caches
-      sessionStorage.removeItem('voicetrace_dashboard');
-      localStorage.removeItem('voicetrace_insights');
+      sessionStorage.removeItem("voicetrace_dashboard");
+      localStorage.removeItem("voicetrace_insights");
 
-      const response = await fetch('/api/sales', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/sales", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          date: new Date().toISOString().split('T')[0],
+          date: new Date().toISOString().split("T")[0],
           items: [item],
-          total: type === 'sale' ? itemTotal : 0, // total represents earnings in our DB schema currently
+          total: type === "sale" ? itemTotal : 0, // total represents earnings in our DB schema currently
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Save failed');
+        throw new Error("Save failed");
       }
 
-      router.push('/dashboard');
+      router.push("/dashboard");
       router.refresh(); // Ensure dashboard is updated
     } catch (error) {
-      console.error('Save error:', error);
+      console.error("Save error:", error);
       setIsSaving(false);
     }
   };
@@ -134,7 +135,7 @@ function AddEntryForm() {
 
           <div className="card p-6">
             <h2 className="text-2xl font-bold text-text-primary mb-6">
-              {type === 'sale' ? 'Add Sale' : 'Add Expense'}
+              {type === "sale" ? "Add Sale" : "Add Expense"}
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -142,22 +143,22 @@ function AddEntryForm() {
               <div className="flex rounded-lg p-1 bg-surface-light mb-6">
                 <button
                   type="button"
-                  onClick={() => setType('sale')}
+                  onClick={() => setType("sale")}
                   className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
-                    type === 'sale'
-                      ? 'bg-white text-emerald-600 shadow-sm'
-                      : 'text-text-muted hover:text-text-primary'
+                    type === "sale"
+                      ? "bg-white text-emerald-600 shadow-sm"
+                      : "text-text-muted hover:text-text-primary"
                   }`}
                 >
                   Sale (Income)
                 </button>
                 <button
                   type="button"
-                  onClick={() => setType('expense')}
+                  onClick={() => setType("expense")}
                   className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
-                    type === 'expense'
-                      ? 'bg-white text-red-600 shadow-sm'
-                      : 'text-text-muted hover:text-text-primary'
+                    type === "expense"
+                      ? "bg-white text-red-600 shadow-sm"
+                      : "text-text-muted hover:text-text-primary"
                   }`}
                 >
                   Expense
@@ -174,7 +175,9 @@ function AddEntryForm() {
                   value={name}
                   onChange={handleNameChange}
                   className="w-full px-4 py-2 rounded-xl border border-border bg-white focus:outline-none focus:ring-2 disabled:opacity-50 focus:ring-primary/20 focus:border-primary transition-all text-text-primary placeholder:text-text-muted/50"
-                  placeholder={type === 'sale' ? 'e.g. 2kg Apples' : 'e.g. Transport'}
+                  placeholder={
+                    type === "sale" ? "e.g. 2kg Apples" : "e.g. Transport"
+                  }
                 />
               </div>
 
@@ -209,7 +212,7 @@ function AddEntryForm() {
                 </div>
               </div>
 
-              {type === 'expense' && (
+              {type === "expense" && (
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">
                     Category
@@ -230,7 +233,9 @@ function AddEntryForm() {
 
               <div className="pt-4 mt-6 border-t border-border flex justify-between items-center">
                 <span className="text-text-secondary">Total:</span>
-                <span className={`text-2xl font-bold ${type === 'sale' ? 'text-emerald-600' : 'text-red-600'}`}>
+                <span
+                  className={`text-2xl font-bold ${type === "sale" ? "text-emerald-600" : "text-red-600"}`}
+                >
                   ₹{((parseFloat(price) || 0) * qty).toFixed(2)}
                 </span>
               </div>
@@ -248,7 +253,7 @@ function AddEntryForm() {
                 ) : (
                   <>
                     <Save className="w-5 h-5" />
-                    Save {type === 'sale' ? 'Sale' : 'Expense'}
+                    Save {type === "sale" ? "Sale" : "Expense"}
                   </>
                 )}
               </button>
@@ -262,7 +267,11 @@ function AddEntryForm() {
 
 export default function AddPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-text-muted">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="p-8 text-center text-text-muted">Loading...</div>
+      }
+    >
       <AddEntryForm />
     </Suspense>
   );
