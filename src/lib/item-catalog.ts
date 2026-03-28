@@ -6,7 +6,10 @@
  * Example: "samosa worth 100rs" → price_per_unit = 25, qty = 100/25 = 4
  */
 
+import { createClient } from '@supabase/supabase-js';
+
 export interface CatalogItem {
+  id?: string;
   name: string;
   price_per_unit: number;
   unit: string; // piece, plate, glass, kg, litre, etc.
@@ -44,46 +47,49 @@ export const itemCatalog: CatalogItem[] = [
   { name: 'Jalebi',           price_per_unit: 30,  unit: 'plate',  category: 'sale', aliases: ['जलेबी'] },
   { name: 'Kulfi',            price_per_unit: 20,  unit: 'piece',  category: 'sale', aliases: ['कुल्फी'] },
   { name: 'Paan',             price_per_unit: 15,  unit: 'piece',  category: 'sale', aliases: ['पान'] },
-
-  // ── Common Expenses ──
-  { name: 'Petrol',           price_per_unit: 100, unit: 'litre',  category: 'expense', aliases: ['पेट्रोल', 'fuel'] },
-  { name: 'Oil',              price_per_unit: 180, unit: 'litre',  category: 'expense', aliases: ['तेल', 'tel', 'cooking oil'] },
-  { name: 'Flour',            price_per_unit: 35,  unit: 'kg',     category: 'expense', aliases: ['आटा', 'aata', 'maida'] },
-  { name: 'Vegetables',       price_per_unit: 50,  unit: 'kg',     category: 'expense', aliases: ['सब्ज़ी', 'sabzi', 'sabji'] },
-  { name: 'Milk',             price_per_unit: 60,  unit: 'litre',  category: 'expense', aliases: ['दूध', 'doodh'] },
-  { name: 'Sugar',            price_per_unit: 45,  unit: 'kg',     category: 'expense', aliases: ['चीनी', 'cheeni'] },
-  { name: 'Tea Leaves',       price_per_unit: 300, unit: 'kg',     category: 'expense', aliases: ['चाय पत्ती', 'chai patti'] },
 ];
 
-/**
- * Build a nicely formatted catalog string for embedding into the AI prompt.
- */
-export function getCatalogPromptBlock(): string {
-  const saleItems = itemCatalog.filter((c) => c.category === 'sale');
-  const expenseItems = itemCatalog.filter((c) => c.category === 'expense');
+function getSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key);
+}
+
+export async function getLiveCatalog(): Promise<CatalogItem[]> {
+  try {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data, error } = await supabase.from('item_catalog').select('*');
+      if (!error && data && data.length > 0) {
+        return data as CatalogItem[];
+      }
+    }
+  } catch (err) {
+    console.error('Failed to fetch live catalog:', err);
+  }
+  return itemCatalog;
+}
+
+export async function getCatalogPromptBlock(): Promise<string> {
+  const liveCatalog = await getLiveCatalog();
+  const saleItems = liveCatalog.filter((c) => c.category === 'sale');
 
   let block = 'ITEM PRICE CATALOG (use these prices to calculate qty when user only gives a total amount):\n';
   block += '\n--- Sale Items ---\n';
   saleItems.forEach((c) => {
-    block += `• ${c.name}: ₹${c.price_per_unit} per ${c.unit} (aliases: ${c.aliases.join(', ')})\n`;
-  });
-  block += '\n--- Expense Items ---\n';
-  expenseItems.forEach((c) => {
-    block += `• ${c.name}: ₹${c.price_per_unit} per ${c.unit} (aliases: ${c.aliases.join(', ')})\n`;
+    block += `• ${c.name}: ₹${c.price_per_unit} per ${c.unit} (aliases: ${(c.aliases || []).join(', ')})\n`;
   });
 
   return block;
 }
 
-/**
- * Look up an item from the catalog by name (case-insensitive, checks aliases too).
- * Returns the CatalogItem or undefined if not found.
- */
-export function findCatalogItem(name: string): CatalogItem | undefined {
+export async function findCatalogItem(name: string): Promise<CatalogItem | undefined> {
+  const liveCatalog = await getLiveCatalog();
   const lower = name.toLowerCase().trim();
-  return itemCatalog.find(
+  return liveCatalog.find(
     (c) =>
       c.name.toLowerCase() === lower ||
-      c.aliases.some((a) => a.toLowerCase() === lower)
+      (c.aliases || []).some((a) => a.toLowerCase() === lower)
   );
 }

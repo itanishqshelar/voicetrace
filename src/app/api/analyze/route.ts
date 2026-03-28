@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     const groq = new Groq({ apiKey: groqApiKey });
 
     const today = new Date().toISOString().split('T')[0];
-    const catalogBlock = getCatalogPromptBlock();
+    const catalogBlock = await getCatalogPromptBlock();
 
     const prompt = `Convert the following voice input into structured JSON. Extract items, quantity, price per unit, and total. IMPORTANT: Classify each item as either a "sale" (money earned) or "expense" (money spent). The input may be in Hindi, English, or Hinglish.
 
@@ -160,7 +160,7 @@ Context clues for expenses:
     const flagMessages: string[] = [];
 
     for (const item of parsed.items) {
-      const catalogEntry = findCatalogItem(item.name);
+      const catalogEntry = await findCatalogItem(item.name);
       if (!catalogEntry) continue; // unknown items already handled by AI
 
       const unitPrice = catalogEntry.price_per_unit;
