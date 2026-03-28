@@ -24,24 +24,6 @@ interface MessageRow {
   created_at: string;
 }
 
-interface SpeechRecognitionLike {
-  lang: string;
-  interimResults: boolean;
-  maxAlternatives: number;
-  onstart: (() => void) | null;
-  onerror: ((event: Event) => void) | null;
-  onend: (() => void) | null;
-  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
-  start: () => void;
-  stop: () => void;
-}
-
-interface SpeechRecognitionEventLike {
-  results: ArrayLike<ArrayLike<{ transcript: string }>>;
-}
-
-type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
-
 interface SalesSummaryRow {
   date: string;
   total: number;
@@ -64,7 +46,7 @@ interface ChatDbMeta {
 }
 
 const GEMINI_WS_ENDPOINT =
-  "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent";
+  "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
 
 export default function ChatFab() {
   const [open, setOpen] = useState(false);
@@ -75,15 +57,21 @@ export default function ChatFab() {
   const [textInput, setTextInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
-  const [dbStatus, setDbStatus] = useState<string | null>(null);
   const [voiceConnected, setVoiceConnected] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [voiceDbSummary, setVoiceDbSummary] = useState<string>(
-    "DB summary unavailable.",
-  );
 
   const wsRef = useRef<WebSocket | null>(null);
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const playbackTimeRef = useRef<number>(0);
+  const pendingStartRef = useRef(false);
+  const setupTimeoutRef = useRef<number | null>(null);
+  const lastUserTranscriptRef = useRef<string>("");
+  const lastAssistantTranscriptRef = useRef<string>("");
+  const liveUserBufferRef = useRef<string>("");
+  const liveAssistantBufferRef = useRef<string>("");
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const geminiApiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
@@ -251,14 +239,6 @@ export default function ChatFab() {
         throw new Error(data.error || "Failed to get chat response");
       }
 
-      if (data.dbMeta) {
-        const meta = data.dbMeta;
-        const head = meta.connected ? "DB connected" : "DB degraded";
-        const detail = `(${meta.keyType}) sales:${meta.salesCount} expenses:${meta.expensesCount} session:${meta.sessionMessagesCount}`;
-        const errorSuffix = meta.errors.length ? ` | ${meta.errors[0]}` : "";
-        setDbStatus(`${head} ${detail}${errorSuffix}`);
-      }
-
       await persistMessage({
         session_id: activeSessionId,
         role: "assistant",
@@ -286,27 +266,39 @@ export default function ChatFab() {
       return;
     }
 
-    setStatus("Connecting to Gemini Live...");
+    const wsUrl = `${GEMINI_WS_ENDPOINT}?key=${encodeURIComponent(geminiApiKey)}`;
+    setVoiceConnected(false);
 
-    const ws = new WebSocket(`${GEMINI_WS_ENDPOINT}?key=${geminiApiKey}`);
+    const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {
-      setVoiceConnected(true);
-      setStatus("Voice mode connected.");
-
       void (async () => {
-        const summary = await buildVoiceDbSummary();
-        setVoiceDbSummary(summary);
+        let summary = "Could not fetch DB summary from Supabase.";
+        try {
+          summary = await Promise.race([
+            buildVoiceDbSummary(),
+            new Promise<string>((resolve) => {
+              window.setTimeout(
+                () => resolve("Could not fetch DB summary from Supabase."),
+                1200,
+              );
+            }),
+          ]);
+        } catch {
+          summary = "Could not fetch DB summary from Supabase.";
+        }
 
         ws.send(
           JSON.stringify({
             setup: {
-              model: "models/gemini-2.0-flash-exp",
-              generation_config: {
-                response_modalities: ["TEXT"],
+              model: "models/gemini-3.1-flash-live-preview",
+              generationConfig: {
+                responseModalities: ["AUDIO"],
               },
-              system_instruction: {
+              inputAudioTranscription: {},
+              outputAudioTranscription: {},
+              systemInstruction: {
                 parts: [
                   {
                     text: `You are VoiceTrace voice agent. Reply briefly and conversationally. Use the business context below when user asks about sales, expenses, trends, or recommendations.\n\nVOICE_DB_CONTEXT:\n${summary}`,
@@ -316,27 +308,94 @@ export default function ChatFab() {
             },
           }),
         );
+
+        if (setupTimeoutRef.current) {
+          window.clearTimeout(setupTimeoutRef.current);
+        }
+        setupTimeoutRef.current = window.setTimeout(() => {
+          if (!voiceConnected) {
+            setStatus("Voice setup timed out. Please retry.");
+            try {
+              ws.close();
+            } catch {
+              // no-op
+            }
+          }
+        }, 10000);
       })();
     };
 
     ws.onmessage = async (event) => {
-      const data = JSON.parse(event.data as string) as Record<string, unknown>;
-      const maybeText = extractLiveText(data);
-      if (!maybeText) return;
+      let rawPayload: string;
 
-      if (activeSessionId) {
-        await persistMessage({
-          session_id: activeSessionId,
-          role: "assistant",
-          mode: "voice",
-          content: maybeText,
-        });
+      if (typeof event.data === "string") {
+        rawPayload = event.data;
+      } else if (event.data instanceof Blob) {
+        rawPayload = await event.data.text();
+      } else if (event.data instanceof ArrayBuffer) {
+        rawPayload = new TextDecoder().decode(event.data);
+      } else {
+        return;
       }
 
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        const utterance = new SpeechSynthesisUtterance(maybeText);
-        utterance.lang = "en-IN";
-        window.speechSynthesis.speak(utterance);
+      let data: Record<string, unknown>;
+      try {
+        data = JSON.parse(rawPayload) as Record<string, unknown>;
+      } catch {
+        return;
+      }
+
+      if (data.setupComplete !== undefined) {
+        setVoiceConnected(true);
+        setStatus(null);
+        if (setupTimeoutRef.current) {
+          window.clearTimeout(setupTimeoutRef.current);
+          setupTimeoutRef.current = null;
+        }
+        if (pendingStartRef.current) {
+          pendingStartRef.current = false;
+          void startAudioStream();
+        }
+        return;
+      }
+
+      const serverError =
+        (data.error as { message?: string } | undefined)?.message ||
+        (data.error as string | undefined);
+      if (serverError) {
+        setStatus(`Gemini Live error: ${serverError}`);
+        return;
+      }
+
+      const maybeText = extractLiveText(data);
+      const maybeAudio = extractLiveAudio(data);
+      const turnComplete =
+        (data.serverContent as { turnComplete?: boolean } | undefined)
+          ?.turnComplete === true;
+
+      if (maybeAudio) {
+        playPcmChunk(maybeAudio.data, maybeAudio.sampleRate);
+      }
+
+      if (maybeText) {
+        const isUserText = maybeText.kind === "input";
+        const textValue = maybeText.text;
+
+        if (isUserText) {
+          liveUserBufferRef.current = mergeTranscript(
+            liveUserBufferRef.current,
+            textValue,
+          );
+        } else {
+          liveAssistantBufferRef.current = mergeTranscript(
+            liveAssistantBufferRef.current,
+            textValue,
+          );
+        }
+      }
+
+      if (turnComplete) {
+        await flushVoiceTurn();
       }
     };
 
@@ -345,21 +404,85 @@ export default function ChatFab() {
       setVoiceConnected(false);
     };
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
+      if (setupTimeoutRef.current) {
+        window.clearTimeout(setupTimeoutRef.current);
+        setupTimeoutRef.current = null;
+      }
+      if (!event.wasClean) {
+        setStatus("Voice connection closed unexpectedly.");
+      }
       setVoiceConnected(false);
     };
   }
 
   function closeVoiceSocket() {
+    if (setupTimeoutRef.current) {
+      window.clearTimeout(setupTimeoutRef.current);
+      setupTimeoutRef.current = null;
+    }
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
     }
+    stopAudioStream();
+    liveUserBufferRef.current = "";
+    liveAssistantBufferRef.current = "";
     setVoiceConnected(false);
-    stopListening();
+  }
+
+  function mergeTranscript(previous: string, incoming: string) {
+    const next = incoming.trim();
+    if (!next) return previous;
+    if (!previous) return next;
+    if (next.startsWith(previous)) return next;
+    if (previous.endsWith(next)) return previous;
+    return `${previous} ${next}`.replace(/\s+/g, " ").trim();
+  }
+
+  async function flushVoiceTurn() {
+    if (!activeSessionId) return;
+
+    const userText = liveUserBufferRef.current.trim();
+    const assistantText = liveAssistantBufferRef.current.trim();
+
+    if (userText && userText !== lastUserTranscriptRef.current) {
+      lastUserTranscriptRef.current = userText;
+      await persistMessage({
+        session_id: activeSessionId,
+        role: "user",
+        mode: "voice",
+        content: userText,
+      });
+    }
+
+    if (assistantText && assistantText !== lastAssistantTranscriptRef.current) {
+      lastAssistantTranscriptRef.current = assistantText;
+      await persistMessage({
+        session_id: activeSessionId,
+        role: "assistant",
+        mode: "voice",
+        content: assistantText,
+      });
+    }
+
+    liveUserBufferRef.current = "";
+    liveAssistantBufferRef.current = "";
   }
 
   function extractLiveText(payload: Record<string, unknown>) {
+    const outputTranscription =
+      (payload.serverContent as { outputTranscription?: { text?: string } })
+        ?.outputTranscription?.text ?? "";
+    if (outputTranscription)
+      return { kind: "output" as const, text: outputTranscription };
+
+    const inputTranscription =
+      (payload.serverContent as { inputTranscription?: { text?: string } })
+        ?.inputTranscription?.text ?? "";
+    if (inputTranscription)
+      return { kind: "input" as const, text: inputTranscription };
+
     const directText =
       (
         payload.serverContent as {
@@ -369,7 +492,7 @@ export default function ChatFab() {
         ?.map((p) => p.text)
         .filter(Boolean)
         .join("\n") ?? "";
-    if (directText) return directText;
+    if (directText) return { kind: "output" as const, text: directText };
 
     const candidateText =
       (
@@ -382,7 +505,112 @@ export default function ChatFab() {
         .filter(Boolean)
         .join("\n") ?? "";
 
-    return candidateText || null;
+    return candidateText
+      ? { kind: "output" as const, text: candidateText }
+      : null;
+  }
+
+  function extractLiveAudio(payload: Record<string, unknown>) {
+    const parts =
+      (
+        payload.serverContent as {
+          modelTurn?: {
+            parts?: Array<{
+              inlineData?: { data?: string; mimeType?: string };
+            }>;
+          };
+        }
+      )?.modelTurn?.parts ?? [];
+
+    for (const part of parts) {
+      const inlineData = part.inlineData;
+      if (!inlineData?.data) continue;
+      const mimeType = inlineData.mimeType || "audio/pcm;rate=24000";
+      const match = mimeType.match(/rate=(\d+)/);
+      const sampleRate = match ? Number(match[1]) : 24000;
+      return { data: inlineData.data, sampleRate };
+    }
+
+    return null;
+  }
+
+  function decodeBase64ToInt16(base64: string) {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new Int16Array(bytes.buffer);
+  }
+
+  function playPcmChunk(base64Pcm: string, sampleRate: number) {
+    const audioContext = audioContextRef.current;
+    if (!audioContext) return;
+
+    const int16 = decodeBase64ToInt16(base64Pcm);
+    if (!int16.length) return;
+
+    const float32 = new Float32Array(int16.length);
+    for (let i = 0; i < int16.length; i += 1) {
+      float32[i] = Math.max(-1, Math.min(1, int16[i] / 32768));
+    }
+
+    const buffer = audioContext.createBuffer(1, float32.length, sampleRate);
+    buffer.copyToChannel(float32, 0);
+
+    const source = audioContext.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioContext.destination);
+
+    const startAt = Math.max(
+      audioContext.currentTime,
+      playbackTimeRef.current || 0,
+    );
+    source.start(startAt);
+    playbackTimeRef.current = startAt + buffer.duration;
+  }
+
+  function downsampleTo16k(input: Float32Array, inputRate: number) {
+    const outputRate = 16000;
+    if (inputRate === outputRate) return input;
+
+    const ratio = inputRate / outputRate;
+    const outputLength = Math.max(1, Math.round(input.length / ratio));
+    const output = new Float32Array(outputLength);
+
+    let outputIndex = 0;
+    let inputIndex = 0;
+    while (outputIndex < outputLength) {
+      const nextInputIndex = Math.round((outputIndex + 1) * ratio);
+      let sum = 0;
+      let count = 0;
+      for (let i = inputIndex; i < nextInputIndex && i < input.length; i += 1) {
+        sum += input[i];
+        count += 1;
+      }
+      output[outputIndex] = count > 0 ? sum / count : 0;
+      outputIndex += 1;
+      inputIndex = nextInputIndex;
+    }
+    return output;
+  }
+
+  function floatTo16BitPcmBytes(float32: Float32Array) {
+    const bytes = new Uint8Array(float32.length * 2);
+    const view = new DataView(bytes.buffer);
+    for (let i = 0; i < float32.length; i += 1) {
+      const s = Math.max(-1, Math.min(1, float32[i]));
+      view.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+    }
+    return bytes;
+  }
+
+  function bytesToBase64(bytes: Uint8Array) {
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 1) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
   }
 
   async function buildVoiceDbSummary() {
@@ -455,91 +683,115 @@ export default function ChatFab() {
     ].join("\n");
   }
 
-  function startListening() {
-    const win = window as Window & {
-      SpeechRecognition?: SpeechRecognitionCtor;
-      webkitSpeechRecognition?: SpeechRecognitionCtor;
-    };
-    const SpeechRecognitionImpl =
-      win.SpeechRecognition || win.webkitSpeechRecognition;
-
-    if (!SpeechRecognitionImpl) {
-      setStatus("Speech recognition is not available in this browser.");
+  async function startAudioStream() {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      setStatus("Voice is not connected yet.");
       return;
     }
 
-    const recognition = new SpeechRecognitionImpl();
-    recognition.lang = "en-IN";
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
+    if (isListening) return;
 
-    recognition.onstart = () => {
-      setIsListening(true);
-      setStatus("Listening...");
-    };
-
-    recognition.onerror = () => {
-      setStatus("Voice capture failed. Please try again.");
-      setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
-    recognition.onresult = async (event: SpeechRecognitionEventLike) => {
-      const transcript = event.results?.[0]?.[0]?.transcript?.trim();
-      if (!transcript || !activeSessionId) return;
-
-      let liveDbSummary = voiceDbSummary;
-      if (!liveDbSummary || liveDbSummary.includes("unavailable")) {
-        liveDbSummary = await buildVoiceDbSummary();
-        setVoiceDbSummary(liveDbSummary);
-      }
-
-      await persistMessage({
-        session_id: activeSessionId,
-        role: "user",
-        mode: "voice",
-        content: transcript,
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          channelCount: 1,
+        },
       });
 
-      if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-        setStatus("Voice socket is not connected.");
-        return;
+      mediaStreamRef.current = stream;
+
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioContext();
       }
 
-      wsRef.current.send(
-        JSON.stringify({
-          client_content: {
-            turns: [
-              {
-                role: "user",
-                parts: [
-                  {
-                    text: `DB summary:\n${liveDbSummary}\n\nUser voice query: ${transcript}`,
-                  },
-                ],
+      const audioContext = audioContextRef.current;
+      if (audioContext.state === "suspended") {
+        await audioContext.resume();
+      }
+
+      playbackTimeRef.current = audioContext.currentTime;
+
+      const source = audioContext.createMediaStreamSource(stream);
+      sourceNodeRef.current = source;
+      const processor = audioContext.createScriptProcessor(4096, 1, 1);
+      processorRef.current = processor;
+
+      processor.onaudioprocess = (event) => {
+        const ws = wsRef.current;
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+        const input = event.inputBuffer.getChannelData(0);
+        const monoChunk = new Float32Array(input.length);
+        monoChunk.set(input);
+        const downsampled = downsampleTo16k(monoChunk, audioContext.sampleRate);
+        const pcmBytes = floatTo16BitPcmBytes(downsampled);
+        const b64 = bytesToBase64(pcmBytes);
+
+        ws.send(
+          JSON.stringify({
+            realtimeInput: {
+              audio: {
+                data: b64,
+                mimeType: "audio/pcm;rate=16000",
               },
-            ],
-            turn_complete: true,
-          },
-        }),
-      );
+            },
+          }),
+        );
+      };
 
-      setStatus("Generating voice reply...");
-    };
+      source.connect(processor);
+      processor.connect(audioContext.destination);
 
-    recognitionRef.current = recognition;
-    recognition.start();
+      setIsListening(true);
+      setStatus(null);
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : "Unknown audio error";
+      setStatus(`Mic stream failed: ${msg}`);
+      stopAudioStream();
+    }
+  }
+
+  function stopAudioStream() {
+    if (processorRef.current) {
+      processorRef.current.disconnect();
+      processorRef.current.onaudioprocess = null;
+      processorRef.current = null;
+    }
+
+    if (sourceNodeRef.current) {
+      sourceNodeRef.current.disconnect();
+      sourceNodeRef.current = null;
+    }
+
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+
+    const ws = wsRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }));
+    }
+
+    setIsListening(false);
+  }
+
+  function startListening() {
+    if (!voiceConnected) {
+      pendingStartRef.current = true;
+      void connectVoiceMode();
+      return;
+    }
+
+    void startAudioStream();
   }
 
   function stopListening() {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
-    }
-    setIsListening(false);
+    stopAudioStream();
+    setStatus(null);
   }
 
   async function handleNewSession() {
@@ -618,7 +870,11 @@ export default function ChatFab() {
               className="w-full bg-slate-900/80 border border-cyan-100/20 rounded-lg px-2.5 py-2 text-xs text-cyan-50 focus:outline-none focus:border-cyan-400"
             >
               {sortedSessions.map((session) => (
-                <option key={session.id} value={session.id} className="bg-slate-900 text-cyan-50">
+                <option
+                  key={session.id}
+                  value={session.id}
+                  className="bg-slate-900 text-cyan-50"
+                >
                   {session.title} · {session.mode}
                 </option>
               ))}
@@ -657,10 +913,6 @@ export default function ChatFab() {
             <p className="px-4 pb-2 text-[11px] text-amber-100/80">{status}</p>
           ) : null}
 
-          {dbStatus ? (
-            <p className="px-4 pb-2 text-[11px] text-cyan-100/70">{dbStatus}</p>
-          ) : null}
-
           {mode === "chat" ? (
             <div className="p-3 border-t border-cyan-100/10 flex items-end gap-2">
               <textarea
@@ -681,10 +933,14 @@ export default function ChatFab() {
             <div className="p-3 border-t border-cyan-100/10 grid grid-cols-2 gap-2">
               <button
                 onClick={startListening}
-                disabled={!voiceConnected || isListening}
+                disabled={isListening}
                 className="h-11 rounded-lg bg-linear-to-r from-amber-400 to-orange-400 text-slate-900 font-semibold text-sm disabled:opacity-50"
               >
-                {isListening ? "Listening..." : "Start Voice"}
+                {isListening
+                  ? "Listening..."
+                  : voiceConnected
+                    ? "Start Voice"
+                    : "Connect Voice"}
               </button>
               <button
                 onClick={stopListening}
