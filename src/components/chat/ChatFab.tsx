@@ -57,6 +57,20 @@ interface VoiceDbResponse {
   };
 }
 
+interface DbContextResponse {
+  format: "chat" | "voice";
+  contextString: string;
+  meta?: {
+    sales_records?: number;
+    expense_records?: number;
+    catalog_items?: number;
+    voice_log_count?: number;
+    errors?: string[];
+    key_type?: "service_role" | "anon" | "missing";
+  };
+  error?: string;
+}
+
 const GEMINI_WS_ENDPOINT =
   "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
 
@@ -330,21 +344,13 @@ export default function ChatFab() {
 
     ws.onopen = () => {
       void (async () => {
-        let summary =
+        let dbContextForPrompt =
           "Database context unavailable — please check your connection.";
         try {
-          summary = await Promise.race([
-            buildVoiceDbSummary(),
-            new Promise<string>((resolve) => {
-              window.setTimeout(
-                () =>
-                  resolve("Database context unavailable — request timed out."),
-                5000,
-              );
-            }),
-          ]);
+          dbContextForPrompt = await buildVoiceDbSummary();
         } catch {
-          summary = "Database context unavailable — an error occurred.";
+          dbContextForPrompt =
+            "Database context unavailable — an error occurred.";
         }
 
         ws.send(
@@ -377,7 +383,8 @@ RULES:
 7. If something isn't in the data, say so clearly.
 8. Keep answers short and friendly — this is a voice interface.
 
-${summary}`,
+DATABASE_CONTEXT:
+${dbContextForPrompt}`,
                   },
                 ],
               },
@@ -584,8 +591,8 @@ ${summary}`,
     const candidateText =
       (
         payload.candidates as
-        | Array<{ content?: { parts?: Array<{ text?: string }> } }>
-        | undefined
+          | Array<{ content?: { parts?: Array<{ text?: string }> } }>
+          | undefined
       )
         ?.flatMap((c) => c.content?.parts ?? [])
         .map((p) => p.text)
@@ -707,22 +714,67 @@ ${summary}`,
    * This replaces the old client-side limited summary.
    */
   async function buildVoiceDbSummary(): Promise<string> {
+    async function fetchJsonWithTimeout(
+      url: string,
+      timeoutMs = 12000,
+    ): Promise<Response> {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        return await fetch(url, { signal: controller.signal });
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
+    }
+
     try {
-      const res = await fetch("/api/chat/db-context?format=voice");
-      if (!res.ok) {
-        console.warn("[buildVoiceDbSummary] API returned", res.status);
+      // Prefer the same compact JSON context shape used in text chat mode
+      // so voice and text answers are grounded in identical data structures.
+      const chatRes = await fetchJsonWithTimeout(
+        "/api/chat/db-context?format=chat",
+      );
+      if (chatRes.ok) {
+        const chatJson = (await chatRes.json()) as DbContextResponse;
+        if (chatJson.contextString) {
+          console.log(
+            `[buildVoiceDbSummary] chat-format context fetched — ` +
+              `sales=${chatJson.meta?.sales_records ?? "?"}, ` +
+              `expenses=${chatJson.meta?.expense_records ?? "?"}, ` +
+              `catalog=${chatJson.meta?.catalog_items ?? "?"}, ` +
+              `voice_logs=${chatJson.meta?.voice_log_count ?? "?"}`,
+          );
+
+          const errorNote = (chatJson.meta?.errors ?? []).filter(Boolean);
+          return `${chatJson.contextString}${
+            errorNote.length > 0
+              ? `\n\nDB_FETCH_WARNINGS: ${errorNote.join(" | ")}`
+              : ""
+          }`;
+        }
+      }
+
+      // Fallback to voice-formatted summary if chat format is unavailable.
+      const voiceRes = await fetchJsonWithTimeout(
+        "/api/chat/db-context?format=voice",
+      );
+      if (!voiceRes.ok) {
+        console.warn("[buildVoiceDbSummary] API returned", voiceRes.status);
         return "Database context unavailable — API error.";
       }
-      const json = (await res.json()) as VoiceDbResponse & { error?: string };
+
+      const json = (await voiceRes.json()) as VoiceDbResponse & {
+        error?: string;
+      };
       if (json.error || !json.contextString) {
         return json.error ?? "Database context unavailable.";
       }
+
       console.log(
         `[buildVoiceDbSummary] fetched context — ` +
-        `sales=${json.meta?.sales_records ?? "?"}, ` +
-        `expenses=${json.meta?.expense_records ?? "?"}, ` +
-        `catalog=${json.meta?.catalog_items ?? "?"}, ` +
-        `voice_logs=${json.meta?.voice_log_count ?? "?"}`,
+          `sales=${json.meta?.sales_records ?? "?"}, ` +
+          `expenses=${json.meta?.expense_records ?? "?"}, ` +
+          `catalog=${json.meta?.catalog_items ?? "?"}, ` +
+          `voice_logs=${json.meta?.voice_log_count ?? "?"}`,
       );
       return json.contextString;
     } catch (err) {
@@ -922,20 +974,22 @@ ${summary}`,
             <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
               <button
                 onClick={() => setMode("chat")}
-                className={`px-3.5 py-2 rounded-lg text-xs font-semibold border flex items-center justify-center gap-1.5 transition-all ${mode === "chat"
-                  ? "bg-slate-900 border-slate-900 text-white shadow-sm"
-                  : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-800"
-                  }`}
+                className={`px-3.5 py-2 rounded-lg text-xs font-semibold border flex items-center justify-center gap-1.5 transition-all ${
+                  mode === "chat"
+                    ? "bg-slate-900 border-slate-900 text-white shadow-sm"
+                    : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-800"
+                }`}
               >
                 <MessageCircle className="w-3.5 h-3.5" />
                 Chat
               </button>
               <button
                 onClick={() => setMode("voice")}
-                className={`px-3.5 py-2 rounded-lg text-xs font-semibold border flex items-center justify-center gap-1.5 transition-all ${mode === "voice"
-                  ? "bg-teal-700 border-teal-700 text-white shadow-sm"
-                  : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-800"
-                  }`}
+                className={`px-3.5 py-2 rounded-lg text-xs font-semibold border flex items-center justify-center gap-1.5 transition-all ${
+                  mode === "voice"
+                    ? "bg-teal-700 border-teal-700 text-white shadow-sm"
+                    : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-800"
+                }`}
               >
                 <Mic className="w-3.5 h-3.5" />
                 Voice
@@ -1008,17 +1062,20 @@ ${summary}`,
               messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`rounded-xl px-3 py-2 text-sm ${message.role === "user"
-                    ? "bg-linear-to-r from-cyan-700 to-teal-700 border border-cyan-800/40 text-white ml-8 shadow-sm"
-                    : "bg-white border border-slate-200 text-slate-800 mr-8 shadow-sm"
-                    }`}
+                  className={`rounded-xl px-3 py-2 text-sm ${
+                    message.role === "user"
+                      ? "bg-linear-to-r from-cyan-700 to-teal-700 border border-cyan-800/40 text-white ml-8 shadow-sm"
+                      : "bg-white border border-slate-200 text-slate-800 mr-8 shadow-sm"
+                  }`}
                 >
                   <p className="whitespace-pre-wrap leading-relaxed">
                     {message.content}
                   </p>
                   <p
                     className={`mt-1 text-[10px] uppercase tracking-wide ${
-                      message.role === "user" ? "text-cyan-100/80" : "text-slate-500"
+                      message.role === "user"
+                        ? "text-cyan-100/80"
+                        : "text-slate-500"
                     }`}
                   >
                     {message.mode}
@@ -1096,9 +1153,10 @@ ${summary}`,
                     h-11 rounded-xl text-sm font-semibold
                     flex items-center justify-center gap-2
                     transition-all duration-200
-                    ${isListening
-                      ? "bg-amber-50 border border-amber-200 text-amber-700 cursor-default"
-                      : "bg-linear-to-br from-teal-600 to-cyan-700 text-white shadow-sm shadow-cyan-700/30 hover:shadow-md hover:shadow-cyan-700/35 hover:scale-[1.02]"
+                    ${
+                      isListening
+                        ? "bg-amber-50 border border-amber-200 text-amber-700 cursor-default"
+                        : "bg-linear-to-br from-teal-600 to-cyan-700 text-white shadow-sm shadow-cyan-700/30 hover:shadow-md hover:shadow-cyan-700/35 hover:scale-[1.02]"
                     }
                     disabled:opacity-80
                   `}
