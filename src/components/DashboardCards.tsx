@@ -243,79 +243,127 @@ export default function DashboardCards({
         </div>
       </div>
 
-      {/* ── ROW 2: Overview (Insights, Revenue & Udhaar) ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
-        {/* AI Insights - Compact Column */}
-        <div className="lg:col-span-1">
-          <div className="card p-5 h-full flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
-                  <Lightbulb className="w-4 h-4 text-violet-600" />
-                </div>
-                <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider">
-                  AI Insights
-                </h3>
-              </div>
-              <button
-                id="refresh-insights-btn"
-                onClick={onRefreshInsights}
-                disabled={isLoadingInsights}
-                className="p-1.5 rounded-lg text-teal-600 hover:bg-teal-50 border border-teal-100 transition-all active:scale-95"
-                title="Refresh AI Insights"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingInsights ? 'animate-spin' : ''}`} />
-              </button>
+      {/* ── ROW 2: AI Insights (Full Width Hero) ── */}
+      <div className="card p-0 overflow-hidden border border-teal-100/60 bg-gradient-to-br from-teal-50/80 via-teal-50/50 to-teal-100/50">
+        {/* Header bar */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-teal-100/40 bg-white/40 backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center shadow-md shadow-teal-200/50">
+              <Lightbulb className="w-4.5 h-4.5 text-white" />
             </div>
-
-            <div className="flex-1 space-y-3 overflow-y-auto max-h-[350px] scrollbar-hide">
-              {isLoadingInsights ? (
-                [1, 2, 3].map((i) => (
-                  <div key={i} className="h-12 bg-slate-50 rounded-xl animate-pulse" />
-                ))
-              ) : insights ? (
-                <>
-                  {insights.insights.map((insight, i) => (
-                    <div key={i} className="p-3 rounded-xl bg-slate-50 border border-slate-100/50">
-                      <p className="text-text-secondary text-sm leading-relaxed">{insight}</p>
-                    </div>
-                  ))}
-                  
-                  {insights.top_item && (
-                    <div className="flex items-center p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-amber-100/50 border border-amber-100">
-                      <Star className="w-4 h-4 text-amber-500 mr-3 shrink-0" />
-                      <div>
-                        <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-0.5">Top Seller</p>
-                        <p className="text-sm text-amber-950 font-bold leading-tight">{insights.top_item}</p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {insights.suggestion && (
-                    <div className="flex items-start p-4 rounded-2xl bg-gradient-to-br from-sky-50 to-sky-100/50 border border-sky-100">
-                      <Target className="w-4 h-4 text-sky-500 mr-3 mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-[10px] font-bold text-sky-600 uppercase tracking-widest mb-1">Tomorrow&apos;s Tip</p>
-                        <p className="text-xs text-sky-950 font-medium leading-snug">{insights.suggestion}</p>
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <p className="text-text-muted text-[11px] text-center py-4">Hit refresh for insights</p>
-              )}
+            <div>
+              <h3 className="text-sm font-extrabold text-teal-900 tracking-tight">
+                AI Insights
+              </h3>
+              <p className="text-[10px] text-teal-600 font-medium">Powered by smart analytics</p>
             </div>
           </div>
+          <button
+            id="refresh-insights-btn"
+            onClick={onRefreshInsights}
+            disabled={isLoadingInsights}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-teal-700 hover:text-teal-800 bg-white/70 hover:bg-white border border-teal-200/50 shadow-sm transition-all active:scale-95"
+            title="Refresh AI Insights"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoadingInsights ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
         </div>
 
-        {/* Minimal Revenue Chart */}
+        <div className="p-6">
+          {isLoadingInsights ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-28 bg-white/50 rounded-2xl animate-pulse" />
+              ))}
+              <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-14 bg-white/40 rounded-xl animate-pulse" />
+                ))}
+              </div>
+            </div>
+          ) : insights ? (
+            <div className="space-y-5">
+              {/* ── Hero Row: Top Seller + Tomorrow's Tip ── */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Top Seller Card */}
+                {insights.top_item && (
+                  <div className="relative group p-5 rounded-2xl bg-white/60 backdrop-blur-sm border border-white/80 shadow-sm hover:bg-white/80 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 overflow-hidden">
+                    <div className="relative flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 shadow-inner">
+                        <Star className="w-6 h-6 text-amber-500 drop-shadow-sm" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold text-amber-600 uppercase tracking-[0.15em] mb-1">
+                          🏆 Top Seller
+                        </p>
+                        <p className="text-xl font-extrabold text-slate-800 leading-tight truncate drop-shadow-sm">
+                          {insights.top_item}
+                        </p>
+                        <p className="text-[11px] text-slate-500 mt-1.5 font-medium">Best-performing product</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tomorrow's Tip Card */}
+                {insights.suggestion && (
+                  <div className="relative group p-5 rounded-2xl bg-white/60 backdrop-blur-sm border border-white/80 shadow-sm hover:bg-white/80 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 overflow-hidden">
+                    <div className="relative flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-teal-100 flex items-center justify-center shrink-0 shadow-inner">
+                        <Target className="w-6 h-6 text-teal-600 drop-shadow-sm" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold text-teal-600 uppercase tracking-[0.15em] mb-1">
+                          💡 Tomorrow&apos;s Tip
+                        </p>
+                        <p className="text-sm font-bold text-slate-800 leading-snug drop-shadow-sm">
+                          {insights.suggestion}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Insight Bullets ── */}
+              {insights.insights.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {insights.insights.map((insight, i) => (
+                    <div
+                      key={i}
+                      className="flex items-start gap-3 p-4 rounded-xl bg-white/60 backdrop-blur-sm border border-white/80 shadow-sm hover:bg-white/80 hover:shadow-md transition-all duration-200"
+                    >
+                      <div className="w-6 h-6 rounded-lg bg-teal-100 flex items-center justify-center shrink-0 mt-0.5">
+                        <Zap className="w-3 h-3 text-teal-600" />
+                      </div>
+                      <p className="text-sm text-slate-700 leading-relaxed font-medium">{insight}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-10 gap-3">
+              <div className="w-14 h-14 rounded-2xl bg-white/50 flex items-center justify-center">
+                <Lightbulb className="w-7 h-7 text-teal-300" />
+              </div>
+              <p className="text-teal-500 text-sm font-medium">Hit refresh to generate AI insights</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── ROW 3: Revenue Chart + Udhaar ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Revenue Chart */}
         <div className="lg:col-span-2">
           <div className="card p-5 h-full flex flex-col">
             <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-4 shrink-0">
               Revenue Trend
             </h3>
             {revenueChartData.length > 0 ? (
-              <div className="flex-1 w-full min-h-[180px]">
+              <div className="flex-1 w-full min-h-[220px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={revenueChartData} barSize={34}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
