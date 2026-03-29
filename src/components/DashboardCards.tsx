@@ -470,7 +470,12 @@ export default function DashboardCards({
                   <div className="flex items-center gap-3">
                     <div className="text-right">
                       <p className="text-sm font-bold text-emerald-600">+₹{entry.items.reduce((s, i) => s + i.total, 0)}</p>
-                      <p className="text-[10px] text-text-muted">{entry.items?.length || 0} items</p>
+                      <p className="text-[10px] text-text-muted">
+                        {entry.items.reduce((sum, item) => {
+                          const qty = typeof item.qty === 'number' && item.qty > 0 ? item.qty : 1;
+                          return sum + qty;
+                        }, 0)} units
+                      </p>
                     </div>
                     <button onClick={() => onDeleteEntry(entry.id)} className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all">
                       <Trash2 className="w-3.5 h-3.5" />

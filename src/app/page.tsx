@@ -32,6 +32,25 @@ export default function HomePage() {
   // Ref so handleSave can always read the latest log ID without stale closure
   const currentLogIdRef = useRef<string | null>(null);
 
+  const persistToDashboard = useCallback(async (data: AnalyzedData) => {
+    const response = await fetch("/api/sales", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        date: data.date,
+        items: data.items,
+        total: data.total_earnings,
+      }),
+    });
+
+    if (!response.ok) {
+      const errPayload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      throw new Error(errPayload.error || "Save failed");
+    }
+  }, []);
+
   const handleTranscription = useCallback(
     async (
       text: string,
@@ -110,6 +129,23 @@ export default function HomePage() {
           hasAnomaly: data.needs_clarification ?? false,
           anomalyMessage: data.clarification_message ?? "",
         });
+
+        // Keep dashboard and spoken logs consistent:
+        // auto-save non-clarification entries immediately.
+        if (!data.needs_clarification) {
+          setIsSaving(true);
+          try {
+            await persistToDashboard(data);
+            setSaved(true);
+            if (currentLogIdRef.current) {
+              updateVoiceLog(currentLogIdRef.current, { saved: true });
+            }
+          } catch (saveError) {
+            console.error("Auto-save error:", saveError);
+          } finally {
+            setIsSaving(false);
+          }
+        }
       } catch (error) {
         console.error("Analysis error:", error);
         setAnalysisError(
@@ -125,23 +161,11 @@ export default function HomePage() {
   );
 
   const handleSave = useCallback(async () => {
-    if (!analyzedData) return;
+    if (!analyzedData || saved) return;
     setIsSaving(true);
 
     try {
-      const response = await fetch("/api/sales", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          date: analyzedData.date,
-          items: analyzedData.items,
-          total: analyzedData.total_earnings,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Save failed");
-      }
+      await persistToDashboard(analyzedData);
 
       setSaved(true);
 
@@ -154,7 +178,7 @@ export default function HomePage() {
     } finally {
       setIsSaving(false);
     }
-  }, [analyzedData]);
+  }, [analyzedData, persistToDashboard, saved]);
 
   return (
     <div className="flex-1 flex flex-col bg-background">

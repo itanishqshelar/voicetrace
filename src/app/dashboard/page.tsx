@@ -4,51 +4,12 @@ import { useEffect, useState, useCallback } from "react";
 import DashboardCards from "@/components/DashboardCards";
 import { SaleEntry } from "@/lib/supabase";
 import { exportPDF, exportExcel } from "@/lib/export-utils";
-import { Download, FileText, FileSpreadsheet } from "lucide-react";
+import { Download, FileText, FileSpreadsheet, MessageCircle, Loader2 } from "lucide-react";
 
 interface InsightsData {
   insights: string[];
   suggestion: string;
   top_item: string;
-}
-
-const SALES_CACHE_KEY = "voicetrace_dashboard";
-const INSIGHTS_CACHE_KEY = "voicetrace_insights";
-const SALES_CACHE_TTL = 60_000; // 1 minute for sales data
-
-// Sales data cache (short TTL — refreshes on each visit)
-function getCachedSales() {
-  try {
-    const raw = sessionStorage.getItem(SALES_CACHE_KEY);
-    if (!raw) return null;
-    const cached = JSON.parse(raw);
-    if (Date.now() - cached.timestamp > SALES_CACHE_TTL) {
-      sessionStorage.removeItem(SALES_CACHE_KEY);
-      return null;
-    }
-    return cached;
-  } catch {
-    return null;
-  }
-}
-
-// Insights cache (persists in localStorage — stays until user clicks Refresh)
-function getPersistedInsights(): InsightsData | null {
-  try {
-    const raw = localStorage.getItem(INSIGHTS_CACHE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
-function persistInsights(data: InsightsData) {
-  try {
-    localStorage.setItem(INSIGHTS_CACHE_KEY, JSON.stringify(data));
-  } catch {
-    /* ignore */
-  }
 }
 
 export default function DashboardPage() {
@@ -57,29 +18,15 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [isSendingTip, setIsSendingTip] = useState(false);
+  const [tipSendStatus, setTipSendStatus] = useState<string | null>(null);
 
-  // Fetch sales data (real-time on page load)
+  // Fetch dashboard entries from DB on page load.
   useEffect(() => {
-    const cached = getCachedSales();
-    if (cached) {
-      setEntries(cached.entries || []);
-      setIsLoading(false);
-    }
-
-    // Always revalidate in background so externally ingested logs
-    // (e.g., WhatsApp webhook) appear even when cached data exists.
     fetch("/api/dashboard")
       .then((res) => res.json())
       .then((data) => {
         setEntries(data.entries || []);
-        try {
-          sessionStorage.setItem(
-            SALES_CACHE_KEY,
-            JSON.stringify({ entries: data.entries, timestamp: Date.now() }),
-          );
-        } catch {
-          /* ignore storage errors */
-        }
       })
       .catch((err) => {
         console.error("Dashboard fetch error:", err);
@@ -87,12 +34,6 @@ export default function DashboardPage() {
       .finally(() => {
         setIsLoading(false);
       });
-
-    // Load persisted insights (these stay forever until Refresh is clicked)
-    const saved = getPersistedInsights();
-    if (saved) {
-      setInsights(saved);
-    }
   }, []);
 
   // Refresh AI insights ONLY on button click
@@ -108,7 +49,6 @@ export default function DashboardPage() {
       });
       const data = await res.json();
       setInsights(data);
-      persistInsights(data); // Save to localStorage — persists across sessions
     } catch (err) {
       console.error("Insights fetch error:", err);
     } finally {
@@ -119,18 +59,7 @@ export default function DashboardPage() {
   // Delete an entry
   const deleteEntry = useCallback(async (id: string) => {
     // Optimistically update UI
-    setEntries((prev) => {
-      const newEntries = prev.filter((e) => e.id !== id);
-      try {
-        sessionStorage.setItem(
-          SALES_CACHE_KEY,
-          JSON.stringify({ entries: newEntries, timestamp: Date.now() }),
-        );
-      } catch {
-        /* ignore */
-      }
-      return newEntries;
-    });
+    setEntries((prev) => prev.filter((e) => e.id !== id));
 
     try {
       const res = await fetch(`/api/sales?id=${id}`, {
@@ -144,6 +73,31 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const sendTodayTipOnWhatsApp = useCallback(async () => {
+    setIsSendingTip(true);
+    setTipSendStatus(null);
+
+    try {
+      const res = await fetch("/api/whapi/send-tip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+
+      const data = (await res.json()) as { ok?: boolean; error?: string; to?: string };
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Failed to send today's tip to WhatsApp.");
+      }
+
+      setTipSendStatus(`Today's tip sent on WhatsApp (${data.to ?? "configured chat"}).`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to send tip.";
+      setTipSendStatus(message);
+    } finally {
+      setIsSendingTip(false);
+    }
+  }, []);
+
   return (
     <div className="flex-1 flex flex-col bg-background">
       {/* Main Content */}
@@ -151,7 +105,25 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto">
           {/* Export Bar */}
           {!isLoading && entries.length > 0 && (
-            <div className="flex justify-end mb-5 relative">
+            <div className="mb-5">
+              <div className="flex justify-end items-center gap-2 relative">
+                <button
+                  onClick={sendTodayTipOnWhatsApp}
+                  disabled={isSendingTip}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium
+                    bg-teal-600 text-white border border-teal-600
+                    hover:bg-teal-700 hover:border-teal-700
+                    disabled:opacity-60 disabled:cursor-not-allowed
+                    shadow-sm transition-all duration-200 active:scale-95"
+                >
+                  {isSendingTip ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <MessageCircle className="w-4 h-4" />
+                  )}
+                  Send today's tip on WhatsApp
+                </button>
+
               <button
                 onClick={() => setShowExportMenu(!showExportMenu)}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium
@@ -204,6 +176,10 @@ export default function DashboardPage() {
                     </button>
                   </div>
                 </>
+              )}
+            </div>
+              {tipSendStatus && (
+                <p className="mt-2 text-right text-xs text-slate-600">{tipSendStatus}</p>
               )}
             </div>
           )}
