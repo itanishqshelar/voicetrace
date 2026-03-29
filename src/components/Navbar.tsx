@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { Search, Bell, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import Link from 'next/link';
 
 const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
@@ -46,15 +46,6 @@ export default function Navbar() {
 
       {/* Right — Actions */}
       <div className="flex items-center gap-2">
-        {/* Search */}
-        <button
-          id="navbar-search"
-          className="w-9 h-9 rounded-xl flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-surface-light transition-colors"
-          aria-label="Search"
-        >
-          <Search className="w-[18px] h-[18px]" />
-        </button>
-
         {/* Add Entry Dropdown */}
         <div className="relative" ref={addMenuRef}>
           <button
@@ -84,17 +75,6 @@ export default function Navbar() {
             </div>
           )}
         </div>
-
-        {/* Notifications */}
-        <button
-          id="navbar-notifications"
-          className="relative w-9 h-9 rounded-xl flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-surface-light transition-colors"
-          aria-label="Notifications"
-        >
-          <Bell className="w-[18px] h-[18px]" />
-          {/* Dot indicator */}
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full ring-2 ring-white" />
-        </button>
 
         {/* Avatar */}
         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-sm font-bold ml-1 cursor-pointer hover:shadow-md transition-shadow">
