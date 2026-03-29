@@ -11,6 +11,7 @@ import {
 } from "@/lib/highlight-detection";
 import { addVoiceLog, updateVoiceLog, generateLogId } from "@/lib/voice-logs";
 import { uploadVoiceRecording } from "@/lib/supabase-audio";
+import { TheInfiniteGrid } from "@/components/ui/the-infinite-grid";
 
 interface AnalyzedData {
   items: SaleItem[];
@@ -181,9 +182,10 @@ export default function HomePage() {
   }, [analyzedData, persistToDashboard, saved]);
 
   return (
-    <div className="flex-1 flex flex-col bg-background">
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 pb-12">
+    <TheInfiniteGrid className="min-h-screen">
+      <div className="flex-1 flex flex-col w-full h-full z-10">
+        {/* Main Content */}
+        <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 pb-12 pt-8">
         <div className="w-full max-w-2xl mx-auto text-center space-y-8">
           {/* Hero */}
           <div className="space-y-4 animate-fade-in-up">
@@ -251,11 +253,12 @@ export default function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="w-full px-4 py-4 text-center border-t border-border">
-        <p className="text-text-muted text-xs">
+      <footer className="w-full px-4 py-4 text-center border-t border-border/20 backdrop-blur-sm">
+        <p className="text-text-muted text-xs pointer-events-auto">
           Built for street vendors · Powered by AI
         </p>
       </footer>
-    </div>
+      </div>
+    </TheInfiniteGrid>
   );
 }
